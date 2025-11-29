@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33530.505
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FTDMapgen_WinForms", "FTDMapgen_WinForms.csproj", "{AD6371A8-4374-4667-B8F8-70121E74B36D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AD6371A8-4374-4667-B8F8-70121E74B36D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD6371A8-4374-4667-B8F8-70121E74B36D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD6371A8-4374-4667-B8F8-70121E74B36D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD6371A8-4374-4667-B8F8-70121E74B36D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9A74DA3E-626C-424C-86C6-9D81E314DE55}
+	EndGlobalSection
+EndGlobal
