@@ -40,7 +40,15 @@ using System.Windows.Forms;
             private TerrainBrush currentBrush = new TerrainBrush(); //not used yet
             private Terrain selectedTerrain = null; //currently selected terrain that is modified
             private Mountain selectedMountain = null; //currently selected mountain that is modified
-            private Terrain storeTerrain = null; //terrain for brush
+            private Terrain storeTerrain =  new Terrain()
+            {
+                BaseHeight = 0f,
+                HeightScale = 0f,
+                Biome = 3,
+                Seed = 1, //seed 1 is a bad thing, need a generator
+                PerlinFrequency = 4,
+                PerlinOctaves = 5
+            }; //terrain for brush
             private Mountain storeMountain = null; //mountain for brush
             private bool isDraggingMountain = false;
             private Point lastMousePos;
@@ -321,9 +329,11 @@ using System.Windows.Forms;
 
                 return displaySettings.HeightMode switch
                 {
-                    HeightMode.Average => 500 * baseHeight * (1 + heightScale),
+                    HeightMode.Average => 500 * baseHeight * (1 + 0.3f*heightScale),
                     HeightMode.Max => 500 * baseHeight * (1 + 0.8f * heightScale), // k1 = 0.8
-                    HeightMode.Min => 500 * baseHeight * (1 + 0.2f * heightScale), // k2 = 0.2
+                    HeightMode.Min => 500 * baseHeight * (1 - 0.2f * heightScale), // k2 = -0.2
+                    HeightMode.Raw => 500 * baseHeight,
+                    HeightMode.Straight => 500 * baseHeight*(1 + heightScale),
                     _ => 500 * baseHeight
                 };
             }
@@ -331,8 +341,8 @@ using System.Windows.Forms;
         private Color GetHeightColor(float height)
         {
             float waterLevel = (float)numWaterLevel.Value;
-            float minHeight = -500 * (1 + 0.2f); // ScaledHeightMin с k2=0.2
-            float maxHeight = 500 * (1 + 0.8f);  // ScaledHeightMax с k1=0.8
+            float minHeight = -500; //* (1 + 0.2f); // ScaledHeightMin с k2=0.2
+            float maxHeight = 500 * 2;//* (1 + 0.8f);  // ScaledHeightMax с k1=0.8
 
             // Нормализуем высоту в диапазон [0, 1]
             float normalized = (height - minHeight) / (maxHeight - minHeight);
@@ -444,8 +454,8 @@ using System.Windows.Forms;
             {
                 foreach (var mountain in mountains)
                 {
-                    var screenPos = WorldToScreen(mountain.Position);
-                    float screenRadius = mountain.Radius * scale;
+                    var screenPos = WorldToScreen2(mountain.Position);
+                    float screenRadius = mountain.Radius;//* scale;
 
                     // Круг влияния
                     using (var pen = new Pen(selectedMountain == mountain ? Color.Red : Color.Black, 2))
@@ -453,6 +463,7 @@ using System.Windows.Forms;
                         pen.DashStyle = DashStyle.Dash;
                         g.DrawEllipse(pen, screenPos.X - screenRadius, screenPos.Y - screenRadius,
                                      screenRadius * 2, screenRadius * 2);
+
                     }
 
                     // Центр горы
@@ -676,12 +687,24 @@ using System.Windows.Forms;
             private Point WorldToScreen(PointF worldPoint)
             {
                 return new Point(
-                    (int)(worldPoint.X * scale + panOffset.X),
-                    (int)(worldPoint.Y * scale + panOffset.Y)
+                    //(int)(worldPoint.X * scale + panOffset.X), //WORLD=(SCREEN-panOffset)/scale ->scale*world+panoffset
+                    //(int)(worldPoint.Y * scale + panOffset.Y)
+                    (int)(worldPoint.X  ),
+                    (int)(worldPoint.Y  )
                 );
             }
 
-            private float Distance(PointF a, PointF b)
+            private PointF WorldToScreen2(PointF worldPoint)
+            {
+                return new PointF(
+                    //(int)(worldPoint.X * scale + panOffset.X), //WORLD=(SCREEN-panOffset)/scale ->scale*world+panoffset
+                    //(int)(worldPoint.Y * scale + panOffset.Y)
+                    (worldPoint.X ),
+                    (worldPoint.Y )
+                );
+            }
+
+        private float Distance(PointF a, PointF b)
             {
                 float dx = a.X - b.X;
                 float dy = a.Y - b.Y;
@@ -772,18 +795,19 @@ using System.Windows.Forms;
             return null;
         }
 
-        private void ApplyBrush(PointF worldPos)
+            //applies BaseHeight,HeightScale,Biome of storeTerrain
+            private void ApplyBrush(PointF worldPos)
             {
-                System.Console.Out.WriteLine("YES!");
+                //System.Console.Out.WriteLine("YES!");
                 var targetTerrain = FindTerrainAtPosition(worldPos);
-                if (targetTerrain != null && selectedTerrain != null)
+                if (targetTerrain != null && storeTerrain != null)
                 {
                     SaveUndoState("Apply Brush");
 
                     // Применяем характеристики выбранного террейна к целевому
-                    targetTerrain.BaseHeight = selectedTerrain.BaseHeight;
-                    targetTerrain.HeightScale = selectedTerrain.HeightScale;
-                    targetTerrain.Biome = selectedTerrain.Biome;
+                    targetTerrain.BaseHeight = storeTerrain.BaseHeight;
+                    targetTerrain.HeightScale = storeTerrain.HeightScale;
+                    targetTerrain.Biome = storeTerrain.Biome;
 
                     Invalidate();
                 }
@@ -809,6 +833,17 @@ using System.Windows.Forms;
 
             private void UpdateTerrainProperties()
             {
+                //запись буфера кисти в панель
+                if (storeTerrain != null)
+                {
+                    numBaseHeight.Value = (decimal)storeTerrain.BaseHeight;
+                    numHeightScale.Value = (decimal)storeTerrain.HeightScale;
+                    numBiome.Value = storeTerrain.Biome;
+
+                    // Обновляем метры
+                    UpdateMeterValues();
+                }
+                //запись СТ в панель (приоритетнее)
                 if (selectedTerrain != null)
                 {
                     numBaseHeight.Value = (decimal)selectedTerrain.BaseHeight;
@@ -834,14 +869,14 @@ using System.Windows.Forms;
                 }
             }
 
-            private void UpdateMeterValues()
+            private void UpdateMeterValues() //probably incorrect formulas, recheck
             {
-                float baseHeightMeters = (float)(500 * selectedTerrain.BaseHeight);
-                float heightScaleMeters = (float)(500 * selectedTerrain.HeightScale);
+                float baseHeightMeters = (float)(500 * numBaseHeight.Value);
+                float heightScaleMeters = baseHeightMeters * (float)( numHeightScale.Value);
 
                 lblBaseHeightMeters.Text = $"{baseHeightMeters:F1}m";
                 lblHeightScaleMeters.Text = $"{heightScaleMeters:F1}m";
-                lblRawHeight.Text = $"{500 * selectedTerrain.BaseHeight:F1}m";
+                lblRawHeight.Text = $"{500 * numBaseHeight.Value:F1}m";
             }
 
             private void SaveUndoState(string actionName)
@@ -945,22 +980,48 @@ using System.Windows.Forms;
             private void UpdateToolButtons()
             {
                 // Сбрасываем выделение при смене инструмента
-                selectedTerrain = null;
+                //selectedTerrain = null;
                 selectedMountain = null;
+
+                if(currentMode==EditorMode.Brush)
+                {
+                    if (selectedTerrain == null)
+                        selectedTerrain = new Terrain()
+                        {
+                            BaseHeight = 0f,
+                            HeightScale = 0f,
+                            Biome = 3,
+                            Seed = 1, //seed 1 is a bad thing, need a generator
+                            PerlinFrequency = 4,
+                            PerlinOctaves = 5
+                        };
+                    storeTerrain = new Terrain();
+                    storeTerrain.copyDataFrom(selectedTerrain);
+                    selectedTerrain = null;
+                    //terrainPropertiesGroup.Visible = true;
+                }
+
+
+
 
                 // Обновляем видимость панелей свойств
                 if (terrainPropertiesGroup != null)
-                    terrainPropertiesGroup.Visible = false;
+                    terrainPropertiesGroup.Visible = true;
                 if (mountainPropertiesGroup != null)
                     mountainPropertiesGroup.Visible = false;
 
+
+                if (lblEditorMode != null)
+                {
+                    lblEditorMode.Text = $"{getEditorText():F1}";
+                }
                 Invalidate();
             }
     }
 
         // Вспомогательные классы
         public enum EditorMode { Select, Brush, Mountain }
-        public enum HeightMode { Average, Max, Min }
+        public enum HeightMode { Average, Max, Min, Raw, Straight }
         public enum DisplayMode { Flat, Gradient }
 
         public class DisplaySettings

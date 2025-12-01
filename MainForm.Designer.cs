@@ -43,6 +43,7 @@ namespace FTDMapgen_WinForms
         private Label lblBaseHeightMeters2;
         private Label lblHeightScaleMeters2;
         private Label lblRawHeight2;
+        private Label lblEditorMode;
 
         // Свойства горы
         private NumericUpDown numMountainX;
@@ -164,7 +165,7 @@ namespace FTDMapgen_WinForms
                 Size = new Size(120, 21),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            cmbHeightMode.Items.AddRange(new[] { "Average", "Max", "Min" });
+            cmbHeightMode.Items.AddRange(new[] { "Average", "Max", "Min", "Raw", "Straight" });
             cmbHeightMode.SelectedIndex = 0;
 
             cmbDisplayMode = new ComboBox
@@ -210,6 +211,14 @@ namespace FTDMapgen_WinForms
             CreateMountainPropertiesPanel();
         }
 
+        public string getEditorText()
+        {
+            string editorMS = "Editor Mode: UNDEFINED LMAO";
+            if (currentMode == EditorMode.Select) editorMS = "Editor Mode: editing selection";
+            if (currentMode == EditorMode.Brush) editorMS = "Editor Mode: terrain brush";
+            return editorMS;
+        }
+
         private Button CreateButton(string text, int x)
         {
             return new Button
@@ -230,6 +239,8 @@ namespace FTDMapgen_WinForms
                 Visible = false
             };
 
+            lblEditorMode = new Label { Text = "nu uh", Location = new Point(10, 0), Width = 300 }; //if var it will tell that this label is null
+
             // Base Height
             var lblBaseHeight = new Label { Text = "Base Height:", Location = new Point(10, 25) };
             numBaseHeight = new NumericUpDown
@@ -246,6 +257,13 @@ namespace FTDMapgen_WinForms
                 if (selectedTerrain != null)
                 {
                     selectedTerrain.BaseHeight = (float)numBaseHeight.Value;
+                    UpdateMeterValues();
+                    Invalidate();
+                }
+
+                if (storeTerrain != null)
+                {
+                    storeTerrain.BaseHeight = (float)numBaseHeight.Value;
                     UpdateMeterValues();
                     Invalidate();
                 }
@@ -270,6 +288,13 @@ namespace FTDMapgen_WinForms
                     UpdateMeterValues();
                     Invalidate();
                 }
+
+                if (selectedTerrain != null)
+                {
+                    storeTerrain.HeightScale = (float)numHeightScale.Value;
+                    UpdateMeterValues();
+                    Invalidate();
+                }
             };
 
             // Biome
@@ -289,18 +314,24 @@ namespace FTDMapgen_WinForms
                     selectedTerrain.Biome = (int)numBiome.Value;
                     Invalidate();
                 }
+
+                if (selectedTerrain != null)
+                {
+                    storeTerrain.Biome = (int)numBiome.Value;
+                    Invalidate();
+                }
             };
 
             // Метровые значения
             lblBaseHeightMeters = new Label { Text = "0m", Location = new Point(150, 124), Size = new Size(80, 20) }; //(190, 25)
             lblHeightScaleMeters = new Label { Text = "0m", Location = new Point(150, 148), Size = new Size(80, 20) };//(190, 50)
-            lblRawHeight = new Label { Text = "Raw: 0m", Location = new Point(150, 100), Size = new Size(150, 20) };//(100, 100)
+            lblRawHeight = new Label { Text = "0m", Location = new Point(150, 100), Size = new Size(150, 20) };//(100, 100)
 
             lblBaseHeightMeters2 = new Label { Text = "BaseHeight:", Location = new Point(10, 124), Size = new Size(80, 20) }; 
             lblHeightScaleMeters2 = new Label { Text = "HeightScale:", Location = new Point(10, 148), Size = new Size(80, 20) };
             lblRawHeight2 = new Label { Text = "RawHeight:", Location = new Point(10, 100), Size = new Size(150, 20) };
 
-            terrainGroup.Controls.AddRange(new Control[] {
+            terrainGroup.Controls.AddRange(new Control[] {lblEditorMode,
         lblBaseHeight, numBaseHeight,
         lblHeightScale, numHeightScale,
         lblBiome, numBiome,
