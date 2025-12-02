@@ -62,12 +62,11 @@ using System.Windows.Forms;
         // Цвета биомов
         private static readonly Dictionary<int, Color> BiomeColors = new Dictionary<int, Color>
             {
-                { 0, Color.Gray },     // Неизвестный
-                { 1, Color.White },    // Снег
-                { 2, Color.Green },    // Лес
-                { 3, Color.YellowGreen }, // Равнина
-                { 4, Color.Brown },    // Горы
-                { 5, Color.Blue }      // Вода
+                { 0, Color.Gray },     // Неизвестный, ocean floor
+                { 1, Color.Green },    // Лес, plains
+                { 2, Color.YellowGreen }, // Равнина, desert actually
+                { 3, Color.White },    // Снег, snow
+                { 4, Color.Brown }    // Горы, Lava
             };
 
             public MainForm()
@@ -100,6 +99,7 @@ using System.Windows.Forms;
                 btnSave.Click += BtnSave_Click;
                 btnUndo.Click += BtnUndo_Click;
                 btnRedo.Click += BtnRedo_Click;
+                //Mountain Delete is in designer
 
                 // Обработчики изменения настроек
                 cmbHeightMode.SelectedIndexChanged += SettingsChanged;
@@ -132,14 +132,16 @@ using System.Windows.Forms;
                 };
             }
 
-            private void InitializeWorldData()
+            private void InitializeWorldData() //TEMPORARY FOR DEBUG. INITIALIZATION IS INSUFFICIENT
             {
                 // Создаем базовую структуру если данных нет
                 if (worldData.BoardLayout == null)
                 {
                     worldData.BoardLayout = new BoardLayout
                     {
-                        BoardSections = new List<List<BoardSection>>()
+                        BoardSections = new List<List<BoardSection>>(),
+                        TerrainsPerBoard = 7,
+                        TerrainSize = 256.0f
                     };
 
                     // Создаем 3x3 больших секций
@@ -211,25 +213,30 @@ using System.Windows.Forms;
             {
                 var gridPen = new Pen(Color.FromArgb(50, Color.Black), 1);
                 var gridPen2 = new Pen(Color.FromArgb(50, Color.Black), 25);
-                int cellSize = 256;
-                int boardSize = 7 * cellSize;
+                //int cellSize = 256;
+                //int boardSize = 7 * cellSize;
 
-                for (int boardY = 0; boardY < 3; boardY++)
+                int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+                int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
+                int boardsY = worldData.BoardLayout.BoardSections.Count;
+                int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
+
+                for (int boardY = 0; boardY < boardsY; boardY++)
                 {
-                    for (int boardX = 0; boardX < 3; boardX++)
+                    for (int boardX = 0; boardX < boardsX; boardX++)
                     {
-                        float x = boardX * boardSize;
-                        float y = boardY * boardSize;
+                        float x = boardX * smallCellSize;
+                        float y = boardY * smallCellSize;
 
                     // Рамка большого квадрата
                     //g.DrawRectangle(Pens.Black, x, y, boardSize, boardSize);
-                    g.DrawRectangle(gridPen2, x, y, boardSize, boardSize);
+                    g.DrawRectangle(gridPen2, x, y, smallCellSize, smallCellSize);
 
                     // Сетка внутри большого квадрата
-                    for (int i = 1; i < 7; i++)
+                    for (int i = 1; i < worldData.BoardLayout.TerrainsPerBoard; i++)
                         {
-                            g.DrawLine(gridPen, x + i * cellSize, y, x + i * cellSize, y + boardSize);
-                            g.DrawLine(gridPen, x, y + i * cellSize, x + boardSize, y + i * cellSize);
+                            g.DrawLine(gridPen, x + i * cellSize, y, x + i * cellSize, y + smallCellSize);
+                            g.DrawLine(gridPen, x, y + i * cellSize, x + smallCellSize, y + i * cellSize);
                         }
                     }
                 }
@@ -239,9 +246,13 @@ using System.Windows.Forms;
         {
             if (worldData?.BoardLayout?.BoardSections == null) return;
 
-            int cellSize = 256;
+            //int cellSize = 256;
+            //int boardsY = worldData.BoardLayout.BoardSections.Count;
+            //int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
 
             // Определяем размеры из данных
+            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
             int boardsY = worldData.BoardLayout.BoardSections.Count;
             int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
 
@@ -257,8 +268,8 @@ using System.Windows.Forms;
                     int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
 
                     // ПОВОРОТ НА 90° НАЛЕВО: меняем X и Y местами и инвертируем
-                    float baseX = /*boardX*7*cellSize;*/boardY * 7 * cellSize;  // boardY становится X
-                    float baseY = /*boardY*7*cellSize;*/(boardsX - 1 - boardX) * 7 * cellSize; // boardX становится Y и инвертируется
+                    float baseX = /*boardX*7*cellSize;*/boardY * smallCellSize;  // boardY становится X
+                    float baseY = /*boardY*7*cellSize;*/(boardsX - 1 - boardX) * smallCellSize; // boardX становится Y и инвертируется
 
                     for (int terrainY = 0; terrainY < terrainsY; terrainY++)
                     {
@@ -275,7 +286,12 @@ using System.Windows.Forms;
                             float y = baseY + (terrainsX - 1 - terrainX) * cellSize;
 
                             float height = CalculateHeight(terrain, new PointF(x + cellSize / 2, y + cellSize / 2));
-                            Color heightColor = GetHeightColor(height);
+
+                            Color heightColor = new Color(); //= GetHeightColor(height);
+                            if(displaySettings.DisplayMode == DisplayMode.Flat) //Yellow Smart
+                                heightColor = GetHeightColor(height);
+                            if (displaySettings.DisplayMode == DisplayMode.Ponos) //Ponos original
+                                heightColor = GetHeightColorOld(height);
 
                             using (var brush = new SolidBrush(heightColor))
                             {
@@ -304,6 +320,7 @@ using System.Windows.Forms;
                 float heightScale = (float)terrain.HeightScale;
 
                 // Применяем модификаторы от гор
+                if (displaySettings.ApplyHills)
                 foreach (var mountain in mountains)
                 {
                     float distance = Distance(worldPos, mountain.Position);
@@ -322,27 +339,28 @@ using System.Windows.Forms;
                 heightScale = Math.Max(0, Math.Min(1, heightScale));
 
                 // Вычисляем итоговую высоту
-                if (!displaySettings.ApplyHills)
-                {
-                    return 500 * baseHeight; // RawHeight
-                }
+                //if (!displaySettings.ApplyHills)
+                //{
+                //    return worldData.BoardLayout.WorldHeightAndDepth * baseHeight; // RawHeight
+                //    
+                //}
 
                 return displaySettings.HeightMode switch
                 {
-                    HeightMode.Average => 500 * baseHeight * (1 + 0.3f*heightScale),
-                    HeightMode.Max => 500 * baseHeight * (1 + 0.8f * heightScale), // k1 = 0.8
-                    HeightMode.Min => 500 * baseHeight * (1 - 0.2f * heightScale), // k2 = -0.2
-                    HeightMode.Raw => 500 * baseHeight,
-                    HeightMode.Straight => 500 * baseHeight*(1 + heightScale),
-                    _ => 500 * baseHeight
+                    HeightMode.Average => worldData.BoardLayout.WorldHeightAndDepth * baseHeight * (1 + 0.3f*heightScale),
+                    HeightMode.Max => worldData.BoardLayout.WorldHeightAndDepth * baseHeight * (1 + 0.8f * heightScale), // k1 = 0.8
+                    HeightMode.Min => worldData.BoardLayout.WorldHeightAndDepth * baseHeight * (1 - 0.2f * heightScale), // k2 = -0.2
+                    HeightMode.Raw => worldData.BoardLayout.WorldHeightAndDepth * baseHeight,
+                    HeightMode.Straight => worldData.BoardLayout.WorldHeightAndDepth * baseHeight*(1 + heightScale),
+                    _ => worldData.BoardLayout.WorldHeightAndDepth * baseHeight
                 };
             }
 
         private Color GetHeightColor(float height)
         {
             float waterLevel = (float)numWaterLevel.Value;
-            float minHeight = -500; //* (1 + 0.2f); // ScaledHeightMin с k2=0.2
-            float maxHeight = 500 * 2;//* (1 + 0.8f);  // ScaledHeightMax с k1=0.8
+            float minHeight = -worldData.BoardLayout.WorldHeightAndDepth; //* (1 + 0.2f); // ScaledHeightMin с k2=0.2
+            float maxHeight = worldData.BoardLayout.WorldHeightAndDepth * 2;//* (1 + 0.8f);  // ScaledHeightMax с k1=0.8
 
             // Нормализуем высоту в диапазон [0, 1]
             float normalized = (height - minHeight) / (maxHeight - minHeight);
@@ -374,6 +392,21 @@ using System.Windows.Forms;
                 landFactor = Math.Max(0, Math.Min(1, landFactor));
                 return InterpolateColor(yellow, darkBrown, landFactor);
             }
+        }
+
+        private Color GetHeightColorOld(float height)
+        {
+            float waterLevel = (float)numWaterLevel.Value;
+
+            // Цветовая схема: от синего (низ) через желтый (уровень воды) к коричневому (верх)
+            if (height <= waterLevel - 100) return Color.DarkBlue;
+            if (height <= waterLevel - 50) return Color.Blue;
+            if (height <= waterLevel - 10) return Color.LightBlue;
+            if (height <= waterLevel) return Color.Yellow;
+            if (height <= waterLevel + 100) return Color.Green;
+            if (height <= waterLevel + 300) return Color.GreenYellow;
+            if (height <= waterLevel + 500) return Color.Orange;
+            return Color.Brown;
         }
 
         private Color InterpolateColor(Color color1, Color color2, float factor)
@@ -447,6 +480,12 @@ using System.Windows.Forms;
                             g.FillEllipse(dotBrush, x + otstupToCenter + otstupFromCenter, y + otstupToCenter - otstupFromCenter, dotSize, dotSize);
                         }
                     }
+
+                    //tile center
+                    SolidBrush dotBrush2 = new SolidBrush(Color.FromArgb(200, Color.White));
+                    g.FillEllipse(dotBrush2, x + cellSize / 2 - 5 , y + cellSize / 2 - 5 , 10, 10 );
+                       
+                    
                 }
             }
 
@@ -497,7 +536,9 @@ using System.Windows.Forms;
             if (t == null) return null;
             if (worldData?.BoardLayout?.BoardSections == null) return null;
 
-            int cellSize = 256;
+            //int cellSize = 256;
+            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
             int boardsY = worldData.BoardLayout.BoardSections.Count;
             int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
 
@@ -513,8 +554,8 @@ using System.Windows.Forms;
                     int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
 
                     // ТА ЖЕ ТРАНСФОРМАЦИЯ ЧТО И В DrawTerrain
-                    float baseX = boardY * 7 * cellSize;
-                    float baseY = (boardsX - 1 - boardX) * 7 * cellSize;
+                    float baseX = boardY * smallCellSize;
+                    float baseY = (boardsX - 1 - boardX) * smallCellSize;
 
                     for (int terrainY = 0; terrainY < terrainsY; terrainY++)
                     {
@@ -550,12 +591,13 @@ using System.Windows.Forms;
 
             if (boardsX == 0 || boardsY == 0) return;
 
-            int cellSize = 256;
+            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int miniGridSize = worldData.BoardLayout.TerrainsPerBoard;
 
             // ВАЖНО: учитываем трансформацию координат (поворот на 90° налево)
             // После поворота: общая ширина = исходная высота, общая высота = исходная ширина
-            float totalWidth = boardsY * 7 * cellSize;   // boardY становится X
-            float totalHeight = boardsX * 7 * cellSize;  // boardX становится Y
+            float totalWidth = boardsY * miniGridSize * cellSize;   // boardY становится X
+            float totalHeight = boardsX * miniGridSize * cellSize;  // boardX становится Y
 
             // Вычисляем доступную область для рисования (исключаем панели)
             int availableWidth = this.ClientSize.Width - (propertiesPanel?.Width ?? 300);
@@ -625,16 +667,22 @@ using System.Windows.Forms;
                     {
                         // Режим кисти - применяем кисть
                         ApplyBrush(worldPos);
+                        return;
                     }
                     else
                     {
                         // Режим выбора или горы - выбираем объект
-                        SelectTerrainOrMountain(worldPos);
+                        if (currentMode == EditorMode.Select)
+                        {
+                            SelectTerrainOrMountain(worldPos);
+                            return;
+                        }
 
-                        if (currentMode == EditorMode.Mountain && selectedMountain == null)
+                        if (currentMode == EditorMode.Mountain /*&& selectedMountain == null*/)
                         {
                             // Если в режиме горы и ничего не выбрано - создаем новую гору
                             CreateMountain(worldPos);
+                            return;
                         }
                     }
                 }
@@ -728,6 +776,12 @@ using System.Windows.Forms;
                 Invalidate();
                 return;
             }
+            else
+            {
+                // Ничего не выбрано - скрываем панели
+                //if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = false;
+                if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
+            }
 
             // Затем террейны
             selectedTerrain = FindTerrainAtPosition(worldPos);
@@ -741,12 +795,13 @@ using System.Windows.Forms;
                 if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
 
                 Invalidate();
+                return;
             }
             else
             {
                 // Ничего не выбрано - скрываем панели
                 if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = false;
-                if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
+                //if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
             }
         }
 
@@ -754,7 +809,8 @@ using System.Windows.Forms;
         {
             if (worldData?.BoardLayout?.BoardSections == null) return null;
 
-            int cellSize = 256;
+            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
             int boardsY = worldData.BoardLayout.BoardSections.Count;
             int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
 
@@ -770,8 +826,8 @@ using System.Windows.Forms;
                     int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
 
                     // ТА ЖЕ ТРАНСФОРМАЦИЯ ЧТО И В DrawTerrain
-                    float baseX = boardY * 7 * cellSize;
-                    float baseY = (boardsX - 1 - boardX) * 7 * cellSize;
+                    float baseX = boardY * smallCellSize;
+                    float baseY = (boardsX - 1 - boardX) * smallCellSize;
 
                     for (int terrainY = 0; terrainY < terrainsY; terrainY++)
                     {
@@ -815,24 +871,50 @@ using System.Windows.Forms;
 
             private void CreateMountain(PointF worldPos)
             {
-                var mountain = new Mountain
-                {
-                    Position = worldPos,
-                    Radius = 500,
-                    CenterBaseHeightMod = 0.1f,
-                    BorderBaseHeightMod = 0,
-                    CenterHeightScaleMod = 0.2f,
-                    BorderHeightScaleMod = 0
-                };
+                if(storeMountain==null)
+                    storeMountain = new Mountain
+                    {
+                        Position = worldPos,
+                        Radius = 500,
+                        CenterBaseHeightMod = 0.1f,
+                        BorderBaseHeightMod = 0,
+                        CenterHeightScaleMod = 0.2f,
+                        BorderHeightScaleMod = 0
+                    };
+                storeMountain.Position = worldPos;
+                Mountain tempMountain = new Mountain { };
+                tempMountain.copyDataFrom(storeMountain);
+                mountains.Add(tempMountain);
+                //selectedMountain = storeMountain;
 
-                mountains.Add(mountain);
-                selectedMountain = mountain;
+                UpdateMountainProperties();
+                Invalidate();
+            }
+
+            private void DeleteSelectedMountain(object sender, EventArgs e)
+            {
+                if(selectedMountain!=null)
+                {
+                    mountains.Remove(selectedMountain);
+                    selectedMountain = null;
+                }
                 UpdateMountainProperties();
                 Invalidate();
             }
 
             private void UpdateTerrainProperties()
             {
+                //запись СТ в панель (приоритетнее). Если она будет стоять снизу, то после кисти при выборе террейна в него кисть запишется, лол
+                if (selectedTerrain != null)
+                {
+                    numBaseHeight.Value = (decimal)selectedTerrain.BaseHeight;
+                    numHeightScale.Value = (decimal)selectedTerrain.HeightScale;
+                    numBiome.Value = selectedTerrain.Biome;
+
+                    // Обновляем метры
+                    UpdateMeterValues();
+                }
+
                 //запись буфера кисти в панель
                 if (storeTerrain != null)
                 {
@@ -843,20 +925,23 @@ using System.Windows.Forms;
                     // Обновляем метры
                     UpdateMeterValues();
                 }
-                //запись СТ в панель (приоритетнее)
-                if (selectedTerrain != null)
-                {
-                    numBaseHeight.Value = (decimal)selectedTerrain.BaseHeight;
-                    numHeightScale.Value = (decimal)selectedTerrain.HeightScale;
-                    numBiome.Value = selectedTerrain.Biome;
-
-                    // Обновляем метры
-                    UpdateMeterValues();
-                }
+                
             }
 
             private void UpdateMountainProperties()
             {
+                if (storeMountain != null)
+                {
+                    numMountainX.Value = (decimal)storeMountain.Position.X;
+                    numMountainY.Value = (decimal)storeMountain.Position.Y;
+                    numMountainRadius.Value = (decimal)storeMountain.Radius;
+                    numCenterBaseMod.Value = (decimal)storeMountain.CenterBaseHeightMod;
+                    numBorderBaseMod.Value = (decimal)storeMountain.BorderBaseHeightMod;
+                    numCenterScaleMod.Value = (decimal)storeMountain.CenterHeightScaleMod;
+                    numBorderScaleMod.Value = (decimal)storeMountain.BorderHeightScaleMod;
+                }
+
+                //у гор внезапно нет таких проблем с записью, как у террейна. Обожаю произведение своей смартности на смартный код дипсратя
                 if (selectedMountain != null)
                 {
                     numMountainX.Value = (decimal)selectedMountain.Position.X;
@@ -871,12 +956,12 @@ using System.Windows.Forms;
 
             private void UpdateMeterValues() //probably incorrect formulas, recheck
             {
-                float baseHeightMeters = (float)(500 * numBaseHeight.Value);
+                float baseHeightMeters = (float)(worldData.BoardLayout.WorldHeightAndDepth * numBaseHeight.Value);
                 float heightScaleMeters = baseHeightMeters * (float)( numHeightScale.Value);
 
                 lblBaseHeightMeters.Text = $"{baseHeightMeters:F1}m";
                 lblHeightScaleMeters.Text = $"{heightScaleMeters:F1}m";
-                lblRawHeight.Text = $"{500 * numBaseHeight.Value:F1}m";
+                lblRawHeight.Text = $"{worldData.BoardLayout.WorldHeightAndDepth * numBaseHeight.Value:F1}m";
             }
 
             private void SaveUndoState(string actionName)
@@ -982,8 +1067,8 @@ using System.Windows.Forms;
                 // Сбрасываем выделение при смене инструмента
                 //selectedTerrain = null;
                 selectedMountain = null;
-
-                if(currentMode==EditorMode.Brush)
+                updateNUDBoundaries();
+                if (currentMode==EditorMode.Brush)
                 {
                     if (selectedTerrain == null)
                         selectedTerrain = new Terrain()
@@ -1002,27 +1087,64 @@ using System.Windows.Forms;
                 }
 
 
+                if(currentMode==EditorMode.Mountain)
+                {
+                    if (selectedMountain == null)
+                    {
+                        selectedMountain = new Mountain
+                        {
+                            Position = new PointF(0, 0),
+                            Radius = 500,
+                            CenterBaseHeightMod = 0.1f,
+                            BorderBaseHeightMod = 0,
+                            CenterHeightScaleMod = 0.2f,
+                            BorderHeightScaleMod = 0
+                        };
+                    }
+                    storeMountain = new Mountain();
+                    storeMountain.copyDataFrom(selectedMountain);
+                    selectedMountain = null;
+                }
 
+                bool showTerr = currentMode == EditorMode.Brush || (currentMode == EditorMode.Select && selectedTerrain != null);
+                bool showMount = currentMode == EditorMode.Mountain || (currentMode == EditorMode.Select && selectedMountain != null);
 
                 // Обновляем видимость панелей свойств
-                if (terrainPropertiesGroup != null)
+                if (terrainPropertiesGroup != null && showTerr)
                     terrainPropertiesGroup.Visible = true;
-                if (mountainPropertiesGroup != null)
-                    mountainPropertiesGroup.Visible = false;
+                if (mountainPropertiesGroup != null && showMount)
+                    mountainPropertiesGroup.Visible = true;
+            
 
 
-                if (lblEditorMode != null)
+                if (lblEditorModeVal != null)
                 {
-                    lblEditorMode.Text = $"{getEditorText():F1}";
+                    lblEditorModeVal.Text = $"{getEditorText():F1}";
+                }
+                if (lblMountEditorModeVal != null)
+                {
+                    lblMountEditorModeVal.Text = $"{getMountEditorText():F1}";
                 }
                 Invalidate();
+            }
+
+            private void updateNUDBoundaries()
+            {
+                if (numMountainX != null)
+                    numMountainX.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize);
+                if (numMountainY != null)
+                    numMountainY.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize);
+                if (numMountainRadius != null)
+                    numMountainRadius.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
+                if (numMountainInnerRadius != null)
+                    numMountainInnerRadius.Maximum =(decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
             }
     }
 
         // Вспомогательные классы
         public enum EditorMode { Select, Brush, Mountain }
         public enum HeightMode { Average, Max, Min, Raw, Straight }
-        public enum DisplayMode { Flat, Gradient }
+        public enum DisplayMode { Flat, Gradient, Ponos }
 
         public class DisplaySettings
         {

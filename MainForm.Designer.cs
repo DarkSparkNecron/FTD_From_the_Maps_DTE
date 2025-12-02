@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace FTDMapgen_WinForms
 {
@@ -44,15 +45,20 @@ namespace FTDMapgen_WinForms
         private Label lblHeightScaleMeters2;
         private Label lblRawHeight2;
         private Label lblEditorMode;
+        private Label lblEditorModeVal;
 
         // Свойства горы
         private NumericUpDown numMountainX;
         private NumericUpDown numMountainY;
         private NumericUpDown numMountainRadius;
+        private NumericUpDown numMountainInnerRadius;
         private NumericUpDown numCenterBaseMod;
         private NumericUpDown numBorderBaseMod;
         private NumericUpDown numCenterScaleMod;
         private NumericUpDown numBorderScaleMod;
+        private Label lblMountEditorMode; 
+        private Label lblMountEditorModeVal;
+        private Button btnDelete;
 
         protected override void Dispose(bool disposing)
         {
@@ -69,7 +75,7 @@ namespace FTDMapgen_WinForms
 
             // Основные настройки формы
             this.ClientSize = new System.Drawing.Size(1200, 800);
-            this.Text = "Terrain Editor";
+            this.Text = ProgramInfo.Name+" - " + ProgramInfo.Subname+" v"+ProgramInfo.Version;
             this.DoubleBuffered = true;
             this.BackColor = System.Drawing.Color.White;
 
@@ -157,7 +163,7 @@ namespace FTDMapgen_WinForms
                 Size = new Size(280, 120)
             };
 
-            chkApplyHills = new CheckBox { Text = "Apply Hills", Location = new Point(10, 20), Checked = true };
+            chkApplyHills = new CheckBox { Text = "Apply Hills (Mountains)", Location = new Point(10, 20), Size=new Size(200,20), Checked = true };
 
             cmbHeightMode = new ComboBox
             {
@@ -174,7 +180,7 @@ namespace FTDMapgen_WinForms
                 Size = new Size(120, 21),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            cmbDisplayMode.Items.AddRange(new[] { "Flat", "Gradient" });
+            cmbDisplayMode.Items.AddRange(new[] { "Flat", "Gradient", "Ponos" });
             cmbDisplayMode.SelectedIndex = 0;
 
             // ИСПРАВЛЕНИЕ: Укороченный label и сдвинутое поле
@@ -213,9 +219,17 @@ namespace FTDMapgen_WinForms
 
         public string getEditorText()
         {
-            string editorMS = "Editor Mode: UNDEFINED LMAO";
-            if (currentMode == EditorMode.Select) editorMS = "Editor Mode: editing selection";
-            if (currentMode == EditorMode.Brush) editorMS = "Editor Mode: terrain brush";
+            string editorMS = "UNDEFINED LMAO";
+            if (currentMode == EditorMode.Select) editorMS = "Editing Selection";
+            if (currentMode == EditorMode.Brush) editorMS = "Terrain Brush";
+            return editorMS;
+        }
+
+        public string getMountEditorText()
+        {
+            string editorMS = "UNDEFINED LMAO";
+            if (currentMode == EditorMode.Select) editorMS = "Editing Selection";
+            if (currentMode == EditorMode.Mountain) editorMS = "Mountain Insertion";
             return editorMS;
         }
 
@@ -239,13 +253,14 @@ namespace FTDMapgen_WinForms
                 Visible = false
             };
 
-            lblEditorMode = new Label { Text = "nu uh", Location = new Point(10, 0), Width = 300 }; //if var it will tell that this label is null
+            lblEditorMode = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(100, 20) }; 
+            lblEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(150, 20) }; //if var it will tell that this label is null
 
             // Base Height
-            var lblBaseHeight = new Label { Text = "Base Height:", Location = new Point(10, 25) };
+            var lblBaseHeight = new Label { Text = "Base Height:", Location = new Point(10, 50) };
             numBaseHeight = new NumericUpDown
             {
-                Location = new Point(150, 23), //(100,23)
+                Location = new Point(150, 48), //(100,23)
                 Size = new Size(80, 20),
                 Minimum = -1.0m,
                 Maximum = 1.0m,
@@ -257,23 +272,25 @@ namespace FTDMapgen_WinForms
                 if (selectedTerrain != null)
                 {
                     selectedTerrain.BaseHeight = (float)numBaseHeight.Value;
-                    UpdateMeterValues();
-                    Invalidate();
+                    //UpdateMeterValues();
+                    //Invalidate();
                 }
 
                 if (storeTerrain != null)
                 {
                     storeTerrain.BaseHeight = (float)numBaseHeight.Value;
-                    UpdateMeterValues();
-                    Invalidate();
+                    //UpdateMeterValues();
+                    //Invalidate();
                 }
+                UpdateMeterValues();
+                Invalidate();
             };
 
             // Height Scale
-            var lblHeightScale = new Label { Text = "Height Scale:", Location = new Point(10, 50) };
+            var lblHeightScale = new Label { Text = "Height Scale:", Location = new Point(10, 75) };
             numHeightScale = new NumericUpDown
             {
-                Location = new Point(150, 48), //(100, 48)
+                Location = new Point(150, 73), //(100, 48)
                 Size = new Size(80, 20),
                 Minimum = 0.0m,
                 Maximum = 1.0m,
@@ -285,23 +302,25 @@ namespace FTDMapgen_WinForms
                 if (selectedTerrain != null)
                 {
                     selectedTerrain.HeightScale = (float)numHeightScale.Value;
-                    UpdateMeterValues();
-                    Invalidate();
+                    //UpdateMeterValues();
+                    //Invalidate();
                 }
 
-                if (selectedTerrain != null)
+                if (storeTerrain != null)
                 {
                     storeTerrain.HeightScale = (float)numHeightScale.Value;
-                    UpdateMeterValues();
-                    Invalidate();
+                    //UpdateMeterValues();
+                    //Invalidate();
                 }
+                UpdateMeterValues();
+                Invalidate();
             };
 
             // Biome
-            var lblBiome = new Label { Text = "Biome:", Location = new Point(10, 75) };
+            var lblBiome = new Label { Text = "Biome:", Location = new Point(10, 100) };
             numBiome = new NumericUpDown
             {
-                Location = new Point(150, 73), //(100, 73)
+                Location = new Point(150, 98), //(100, 73)
                 Size = new Size(80, 20),
                 Minimum = 0,
                 Maximum = 10,
@@ -312,26 +331,27 @@ namespace FTDMapgen_WinForms
                 if (selectedTerrain != null)
                 {
                     selectedTerrain.Biome = (int)numBiome.Value;
-                    Invalidate();
+                    //Invalidate();
                 }
 
-                if (selectedTerrain != null)
+                if (storeTerrain != null)
                 {
                     storeTerrain.Biome = (int)numBiome.Value;
-                    Invalidate();
+                    //Invalidate();
                 }
+                Invalidate();
             };
 
             // Метровые значения
-            lblBaseHeightMeters = new Label { Text = "0m", Location = new Point(150, 124), Size = new Size(80, 20) }; //(190, 25)
-            lblHeightScaleMeters = new Label { Text = "0m", Location = new Point(150, 148), Size = new Size(80, 20) };//(190, 50)
-            lblRawHeight = new Label { Text = "0m", Location = new Point(150, 100), Size = new Size(150, 20) };//(100, 100)
+            lblBaseHeightMeters = new Label { Text = "0m", Location = new Point(150, 149), Size = new Size(80, 20) }; //(190, 25)
+            lblHeightScaleMeters = new Label { Text = "0m", Location = new Point(150, 173), Size = new Size(80, 20) };//(190, 50)
+            lblRawHeight = new Label { Text = "0m", Location = new Point(150, 125), Size = new Size(150, 20) };//(100, 100)
 
-            lblBaseHeightMeters2 = new Label { Text = "BaseHeight:", Location = new Point(10, 124), Size = new Size(80, 20) }; 
-            lblHeightScaleMeters2 = new Label { Text = "HeightScale:", Location = new Point(10, 148), Size = new Size(80, 20) };
-            lblRawHeight2 = new Label { Text = "RawHeight:", Location = new Point(10, 100), Size = new Size(150, 20) };
+            lblBaseHeightMeters2 = new Label { Text = "BaseHeight:", Location = new Point(10, 149), Size = new Size(80, 20) }; 
+            lblHeightScaleMeters2 = new Label { Text = "HeightScale:", Location = new Point(10, 173), Size = new Size(80, 20) };
+            lblRawHeight2 = new Label { Text = "RawHeight:", Location = new Point(10, 125), Size = new Size(150, 20) };
 
-            terrainGroup.Controls.AddRange(new Control[] {lblEditorMode,
+            terrainGroup.Controls.AddRange(new Control[] {lblEditorMode, lblEditorModeVal,
         lblBaseHeight, numBaseHeight,
         lblHeightScale, numHeightScale,
         lblBiome, numBiome,
@@ -350,15 +370,19 @@ namespace FTDMapgen_WinForms
             {
                 Text = "Mountain Properties",
                 Location = new Point(10, 350),
-                Size = new Size(280, 250),
+                Size = new Size(280, 275),
                 Visible = false
             };
 
+            lblMountEditorMode = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(100, 20) };
+            lblMountEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(150, 20) }; //if var it will tell that this label is null
+
+
             // Позиция X
-            var lblMountainX = new Label { Text = "Position X:", Location = new Point(10, 25) };
+            var lblMountainX = new Label { Text = "Position X:", Location = new Point(10, 49) };
             numMountainX = new NumericUpDown
             {
-                Location = new Point(150, 23), //(100, 23)
+                Location = new Point(150, 48), //(100, 23)
                 Size = new Size(80, 20),
                 Minimum = 0,
                 Maximum = 10000,
@@ -370,15 +394,21 @@ namespace FTDMapgen_WinForms
                 if (selectedMountain != null)
                 {
                     selectedMountain.Position = new PointF((float)numMountainX.Value, selectedMountain.Position.Y);
-                    Invalidate();
+                    //Invalidate();
                 }
+                if (storeMountain != null)
+                {
+                    storeMountain.Position = new PointF((float)numMountainX.Value, storeMountain.Position.Y);
+                    //Invalidate();
+                }
+                Invalidate();
             };
 
             // Позиция Y
-            var lblMountainY = new Label { Text = "Position Y:", Location = new Point(10, 50) };
+            var lblMountainY = new Label { Text = "Position Y:", Location = new Point(10, 75) };
             numMountainY = new NumericUpDown
             {
-                Location = new Point(150, 48), //(100, 48)
+                Location = new Point(150, 73), //(100, 48)
                 Size = new Size(80, 20),
                 Minimum = 0,
                 Maximum = 10000,
@@ -390,15 +420,21 @@ namespace FTDMapgen_WinForms
                 if (selectedMountain != null)
                 {
                     selectedMountain.Position = new PointF(selectedMountain.Position.X, (float)numMountainY.Value);
-                    Invalidate();
+                    //Invalidate();
                 }
+                if (storeMountain != null)
+                {
+                    storeMountain.Position = new PointF(storeMountain.Position.X, (float)numMountainY.Value);
+                    //Invalidate();
+                }
+                Invalidate();
             };
 
             // Радиус
-            var lblMountainRadius = new Label { Text = "Radius:", Location = new Point(10, 75) };
+            var lblMountainRadius = new Label { Text = "Radius:", Location = new Point(10, 100) };
             numMountainRadius = new NumericUpDown
             {
-                Location = new Point(150, 73), //(100, 73)
+                Location = new Point(150, 98), //(100, 73)
                 Size = new Size(80, 20),
                 Minimum = 10,
                 Maximum = 5000,
@@ -410,49 +446,82 @@ namespace FTDMapgen_WinForms
                 if (selectedMountain != null)
                 {
                     selectedMountain.Radius = (float)numMountainRadius.Value;
-                    Invalidate();
+                    //Invalidate();
                 }
+                if (storeMountain != null)
+                {
+                    storeMountain.Radius = (float)numMountainRadius.Value;
+                    //Invalidate();
+                }
+                Invalidate();
             };
+
+            // Внутренний Радиус
+            var lblMountainInnerRadius = new Label { Text = "Inner Radius:", Location = new Point(10, 125) }; //его точно объявлять не нужно наверху?
+            numMountainInnerRadius = new NumericUpDown
+            {
+                Location = new Point(150, 123),
+                Size = new Size(80, 20),
+                Minimum = 0,
+                Maximum = 5000,
+                DecimalPlaces = 1,
+                Increment = 10m
+            };
+            numMountainInnerRadius.ValueChanged += (s, e) =>
+            {
+                if (selectedMountain != null)
+                {
+                    selectedMountain.InnerRadius = (float)numMountainInnerRadius.Value;
+                    
+                }
+                if (storeMountain != null)
+                {
+                    storeMountain.InnerRadius = (float)numMountainInnerRadius.Value;
+                    
+                }
+                Invalidate();
+            };
+
 
             // Модификаторы высоты
-            var lblCenterBaseMod = new Label { Text = "Center Base Mod:", Location = new Point(10, 100) };
+            var lblCenterBaseMod = new Label { Text = "Center Base Mod:", Location = new Point(10, 150) };
             numCenterBaseMod = new NumericUpDown
             {
-                Location = new Point(120, 98),
-                Size = new Size(60, 20),
+                Location = new Point(150, 148),
+                Size = new Size(80, 20),
                 Minimum = -1.0m,
                 Maximum = 1.0m,
                 DecimalPlaces = 3,
                 Increment = 0.01m
             };
 
-            var lblBorderBaseMod = new Label { Text = "Border Base Mod:", Location = new Point(10, 125) };
+            var lblBorderBaseMod = new Label { Text = "Border Base Mod:", Location = new Point(10, 175) };
             numBorderBaseMod = new NumericUpDown
             {
-                Location = new Point(120, 123),
-                Size = new Size(60, 20),
+                Location = new Point(150, 173),
+                Size = new Size(80, 20),
                 Minimum = -1.0m,
                 Maximum = 1.0m,
                 DecimalPlaces = 3,
                 Increment = 0.01m
             };
 
-            var lblCenterScaleMod = new Label { Text = "Center Scale Mod:", Location = new Point(10, 150) };
+            var lblCenterScaleMod = new Label { Text = "Center Scale Mod:", Location = new Point(10, 200) };
             numCenterScaleMod = new NumericUpDown
             {
-                Location = new Point(120, 148),
-                Size = new Size(60, 20),
+                Location = new Point(150, 198),
+                Size = new Size(80, 20),
                 Minimum = -1.0m,
                 Maximum = 1.0m,
                 DecimalPlaces = 3,
                 Increment = 0.01m
             };
 
-            var lblBorderScaleMod = new Label { Text = "Border Scale Mod:", Location = new Point(10, 175) };
+            var lblBorderScaleMod = new Label { Text = "Border Scale Mod:", Location = new Point(10, 225) };
             numBorderScaleMod = new NumericUpDown
             {
-                Location = new Point(120, 173),
-                Size = new Size(60, 20),
+                Location = new Point(150, 223),
+                Size = new Size(80, 20),
                 Minimum = -1.0m,
                 Maximum = 1.0m,
                 DecimalPlaces = 3,
@@ -465,14 +534,23 @@ namespace FTDMapgen_WinForms
             numCenterScaleMod.ValueChanged += MountainPropertyChanged;
             numBorderScaleMod.ValueChanged += MountainPropertyChanged;
 
-            mountainPropertiesGroup.Controls.AddRange(new Control[] {
+            btnDelete=new Button
+            {
+                Text = "Delete Selected Mountain",
+                Location = new Point(10, 250),
+                Size = new Size(150, 25)
+            };
+
+            btnDelete.Click += DeleteSelectedMountain;
+
+            mountainPropertiesGroup.Controls.AddRange(new Control[] {lblMountEditorMode,lblMountEditorModeVal,
         lblMountainX, numMountainX,
         lblMountainY, numMountainY,
-        lblMountainRadius, numMountainRadius,
+        lblMountainRadius, numMountainRadius, lblMountainInnerRadius, numMountainInnerRadius,
         lblCenterBaseMod, numCenterBaseMod,
         lblBorderBaseMod, numBorderBaseMod,
         lblCenterScaleMod, numCenterScaleMod,
-        lblBorderScaleMod, numBorderScaleMod
+        lblBorderScaleMod, numBorderScaleMod, btnDelete
     });
 
             propertiesPanel.Controls.Add(mountainPropertiesGroup);
@@ -486,8 +564,18 @@ namespace FTDMapgen_WinForms
                 selectedMountain.BorderBaseHeightMod = (float)numBorderBaseMod.Value;
                 selectedMountain.CenterHeightScaleMod = (float)numCenterScaleMod.Value;
                 selectedMountain.BorderHeightScaleMod = (float)numBorderScaleMod.Value;
-                Invalidate();
+                //Invalidate();
             }
+
+            if (storeMountain != null)
+            {
+                storeMountain.CenterBaseHeightMod = (float)numCenterBaseMod.Value;
+                storeMountain.BorderBaseHeightMod = (float)numBorderBaseMod.Value;
+                storeMountain.CenterHeightScaleMod = (float)numCenterScaleMod.Value;
+                storeMountain.BorderHeightScaleMod = (float)numBorderScaleMod.Value;
+                //Invalidate();
+            }
+            Invalidate();
         }
     }
 }
