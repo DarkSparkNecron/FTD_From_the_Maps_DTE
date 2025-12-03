@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
+using System.Runtime.CompilerServices;
 
  
 
@@ -141,7 +142,8 @@ using System.Windows.Forms;
                     {
                         BoardSections = new List<List<BoardSection>>(),
                         TerrainsPerBoard = 7,
-                        TerrainSize = 256.0f
+                        TerrainSize = 256.0f,
+                        WorldHeightAndDepth = 500
                     };
 
                     // Создаем 3x3 больших секций
@@ -216,7 +218,7 @@ using System.Windows.Forms;
                 //int cellSize = 256;
                 //int boardSize = 7 * cellSize;
 
-                int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+                int cellSize = getCellSize();//256;
                 int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
                 int boardsY = worldData.BoardLayout.BoardSections.Count;
                 int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
@@ -225,8 +227,9 @@ using System.Windows.Forms;
                 {
                     for (int boardX = 0; boardX < boardsX; boardX++)
                     {
-                        float x = boardX * smallCellSize;
-                        float y = boardY * smallCellSize;
+                        float y = boardX * smallCellSize; //x
+                        float x = boardY * smallCellSize; //y
+                        //x<->y for vertical maps
 
                     // Рамка большого квадрата
                     //g.DrawRectangle(Pens.Black, x, y, boardSize, boardSize);
@@ -251,7 +254,7 @@ using System.Windows.Forms;
             //int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
 
             // Определяем размеры из данных
-            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int cellSize = getCellSize();//256;
             int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
             int boardsY = worldData.BoardLayout.BoardSections.Count;
             int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
@@ -319,14 +322,17 @@ using System.Windows.Forms;
                 float baseHeight = (float)terrain.BaseHeight;
                 float heightScale = (float)terrain.HeightScale;
 
+                PointF desmartifiedPos = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
+                
                 // Применяем модификаторы от гор
                 if (displaySettings.ApplyHills)
                 foreach (var mountain in mountains)
                 {
-                    float distance = Distance(worldPos, mountain.Position);
-                    if (distance <= mountain.Radius)
+                    float distance = Distance0(desmartifiedPos, mountain.Position)* (float)lengthToSmartK();
+                    if (distance <= mountain.Radius * (float)lengthToSmartK())
                     {
-                        float influence = 1 - (distance / mountain.Radius);
+                        float influence = 1 - ((distance - mountain.InnerRadius * (float)lengthToSmartK()) / (mountain.Radius * (float)lengthToSmartK()));
+                        if (distance <= mountain.InnerRadius * (float)lengthToSmartK()) influence = 1.0f;
                         baseHeight += mountain.CenterBaseHeightMod * influence +
                                      mountain.BorderBaseHeightMod * (1 - influence);
                         heightScale += mountain.CenterHeightScaleMod * influence +
@@ -494,7 +500,10 @@ using System.Windows.Forms;
                 foreach (var mountain in mountains)
                 {
                     var screenPos = WorldToScreen2(mountain.Position);
-                    float screenRadius = mountain.Radius;//* scale;
+                    screenPos.X *= 1f;//(float)lengthToSmartK();
+                    screenPos.Y *= 1f;//(float)lengthToSmartK();
+                    float screenRadius = mountain.Radius * (float)lengthToSmartK();//* scale;
+                    float screenInnerRadius = mountain.InnerRadius * (float)lengthToSmartK();
 
                     // Круг влияния
                     using (var pen = new Pen(selectedMountain == mountain ? Color.Red : Color.Black, 2))
@@ -504,7 +513,14 @@ using System.Windows.Forms;
                                      screenRadius * 2, screenRadius * 2);
 
                     }
+                    // Внутренний круг
+                    using (var pen = new Pen(selectedMountain == mountain ? Color.Red : Color.Black, 2))
+                    {
+                        pen.DashStyle = DashStyle.Dot;
+                        g.DrawEllipse(pen, screenPos.X - screenInnerRadius, screenPos.Y - screenInnerRadius,
+                                     screenInnerRadius * 2, screenInnerRadius * 2);
 
+                    }
                     // Центр горы
                     using (var brush = new SolidBrush(selectedMountain == mountain ? Color.Red : Color.DarkGray))
                     {
@@ -522,7 +538,7 @@ using System.Windows.Forms;
                     float[] CoordPair = getCoordsByTerrain(selectedTerrain);
                     //if (CoordPair == null) Break;
                     var SelectionPen = new Pen(Color.FromArgb(95, Color.White), 50);
-                    g.DrawRectangle(SelectionPen, CoordPair[0]-5, CoordPair[1]-5, 256+5, 256+5);
+                    g.DrawRectangle(SelectionPen, CoordPair[0]-5, CoordPair[1]-5, getCellSize() + 5, getCellSize() + 5);
 
                 }
             }
@@ -537,7 +553,7 @@ using System.Windows.Forms;
             if (worldData?.BoardLayout?.BoardSections == null) return null;
 
             //int cellSize = 256;
-            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int cellSize = getCellSize();//256;
             int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
             int boardsY = worldData.BoardLayout.BoardSections.Count;
             int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
@@ -591,7 +607,7 @@ using System.Windows.Forms;
 
             if (boardsX == 0 || boardsY == 0) return;
 
-            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int cellSize = getCellSize();//256;
             int miniGridSize = worldData.BoardLayout.TerrainsPerBoard;
 
             // ВАЖНО: учитываем трансформацию координат (поворот на 90° налево)
@@ -608,7 +624,7 @@ using System.Windows.Forms;
             float scaleY = availableHeight / totalHeight;
 
             scale = Math.Min(scaleX, scaleY) * 0.95f; // 95% от максимального размера
-            scale = Math.Max(0.1f, Math.Min(2.0f, scale)); // Ограничения
+            //scale = Math.Max(0.1f, Math.Min(2.0f*(float)worldData.BoardLayout.TerrainSize/256.0f, scale)); // Ограничения
 
             // ЦЕНТРИРУЕМ КАРТУ - теперь правильно учитываем панели
             panOffset.X = (availableWidth - totalWidth * scale) / 2;
@@ -638,7 +654,7 @@ using System.Windows.Forms;
                 else
                     scale /= zoomFactor;
 
-                scale = Math.Max(0.1f, Math.Min(5.0f, scale));
+                //scale = Math.Max(0.1f, Math.Min(5.0f, scale));
 
                 var worldPosAfter = ScreenToWorld(e.Location);
                 panOffset.X += (worldPosAfter.X - worldPosBefore.X) * scale;
@@ -651,6 +667,7 @@ using System.Windows.Forms;
         {
             lastMousePos = e.Location;
             var worldPos = ScreenToWorld(e.Location);
+            
 
             if (e.Button == MouseButtons.Right)
             {
@@ -680,8 +697,9 @@ using System.Windows.Forms;
 
                         if (currentMode == EditorMode.Mountain /*&& selectedMountain == null*/)
                         {
+                            PointF desmartifiedPos = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
                             // Если в режиме горы и ничего не выбрано - создаем новую гору
-                            CreateMountain(worldPos);
+                            CreateMountain(desmartifiedPos);
                             return;
                         }
                     }
@@ -727,8 +745,8 @@ using System.Windows.Forms;
         private PointF ScreenToWorld(Point screenPoint)
             {
                 return new PointF(
-                    (screenPoint.X - panOffset.X) / scale,
-                    (screenPoint.Y - panOffset.Y) / scale
+                    (screenPoint.X - panOffset.X) / scale /* (float)lengthToSmartK()*/,
+                    (screenPoint.Y - panOffset.Y) / scale /* (float)lengthToSmartK()*/
                 );
             }
 
@@ -747,8 +765,8 @@ using System.Windows.Forms;
                 return new PointF(
                     //(int)(worldPoint.X * scale + panOffset.X), //WORLD=(SCREEN-panOffset)/scale ->scale*world+panoffset
                     //(int)(worldPoint.Y * scale + panOffset.Y)
-                    (worldPoint.X ),
-                    (worldPoint.Y )
+                    worldPoint.X *(float)lengthToSmartK(),
+                    worldPoint.Y *(float)lengthToSmartK()
                 );
             }
 
@@ -756,14 +774,38 @@ using System.Windows.Forms;
             {
                 float dx = a.X - b.X;
                 float dy = a.Y - b.Y;
-                return (float)Math.Sqrt(dx * dx + dy * dy);
+                return (float)Math.Sqrt(dx * dx + dy * dy)* (float)lengthToSmartK();
             }
+        private float Distance0(PointF a, PointF b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            return (float)Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        private Mountain? getMountainForeach(PointF worldPos)
+        {
+            PointF worldPosInSizedCoords = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
+            foreach (Mountain m in mountains)
+            {
+                if(Distance0(worldPosInSizedCoords, m.Position) < (20 / (float)lengthToSmartK()))
+                {
+                    return m;
+                }
+            }
+            return null;
+        }
 
         // Методы для работы с данными
         private void SelectTerrainOrMountain(PointF worldPos)
         {
             // Сначала проверяем горы
-            selectedMountain = mountains.LastOrDefault(m => Distance(worldPos, m.Position) < 20);
+            PointF worldPosInSizedCoords = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
+            selectedMountain = mountains.LastOrDefault(m => Distance0(worldPosInSizedCoords, m.Position) < (20 / (float)lengthToSmartK())); //FSR it has problems with vertical maps (below the upper square it cannot catch !=null)
+            //this.Text=("ABOBA " + worldPosInSizedCoords + "<-Coord CLICK" + Distance0(worldPosInSizedCoords, selectedMountain.Position) + "<" + (20 / (float)lengthToSmartK()) + " =" + (Distance0(worldPosInSizedCoords, selectedMountain.Position) < (20 / (float)lengthToSmartK())));
+            //"System.ArgumentOutOfRangeException"
+            //selectedMountain = getMountainForeach(worldPos);
+            //this.Text=("ABOBA " + worldPosInSizedCoords + "<-Coord CLICK" + Distance0(worldPosInSizedCoords, selectedMountain.Position) + "<" + (20 / (float)lengthToSmartK()) + " =" + (Distance0(worldPosInSizedCoords, selectedMountain.Position) < (20 / (float)lengthToSmartK())));
             if (selectedMountain != null)
             {
                 selectedTerrain = null;
@@ -772,7 +814,7 @@ using System.Windows.Forms;
                 // Показываем панель свойств горы
                 if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = false;
                 if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = true;
-
+                
                 Invalidate();
                 return;
             }
@@ -782,7 +824,6 @@ using System.Windows.Forms;
                 //if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = false;
                 if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
             }
-
             // Затем террейны
             selectedTerrain = FindTerrainAtPosition(worldPos);
             if (selectedTerrain != null)
@@ -809,7 +850,7 @@ using System.Windows.Forms;
         {
             if (worldData?.BoardLayout?.BoardSections == null) return null;
 
-            int cellSize = (int)worldData.BoardLayout.TerrainSize;//256;
+            int cellSize = getCellSize();//256;
             int smallCellSize = worldData.BoardLayout.TerrainsPerBoard * cellSize;
             int boardsY = worldData.BoardLayout.BoardSections.Count;
             int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
@@ -871,7 +912,7 @@ using System.Windows.Forms;
 
             private void CreateMountain(PointF worldPos)
             {
-                if(storeMountain==null)
+                if (storeMountain==null)
                     storeMountain = new Mountain
                     {
                         Position = worldPos,
@@ -988,6 +1029,8 @@ using System.Windows.Forms;
             {
                 worldData = new WorldData();
                 mountains.Clear();
+                InitializeWorldData(); //temporary...
+                wipeUnnecData();
                 Invalidate();
             }
 
@@ -1004,6 +1047,7 @@ using System.Windows.Forms;
                             string json = await File.ReadAllTextAsync(dialog.FileName);
                             worldData = JsonSerializer.Deserialize<WorldData>(json);
                             InitializeWorldData(); // Дополнительная инициализация
+                            wipeUnnecData();
                             LoadMountainsFromWorldData();
                             FitToView(); // Подгоняем под вид после загрузки
                             Invalidate();
@@ -1136,8 +1180,53 @@ using System.Windows.Forms;
                     numMountainY.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize);
                 if (numMountainRadius != null)
                     numMountainRadius.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
-                if (numMountainInnerRadius != null)
-                    numMountainInnerRadius.Maximum =(decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
+                if (numMountainInnerRadius != null) //This code is for initialisation for case where the upper NUP is null for some reason (this should not happen)
+                    numMountainInnerRadius.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
+                if (numMountainInnerRadius != null && numMountainRadius!=null) //this is updated in numMountainRadius change. This code is for initialisation
+                    numMountainInnerRadius.Maximum = numMountainRadius.Value;//(decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
+            }
+
+            private int getCellSize()
+            {
+                int ans = 1;
+                
+                if(displaySettings.UseTrueSize)
+                {
+                    ans= (int)worldData.BoardLayout.TerrainSize;
+                }
+                else
+                {
+                    ans = 256;
+                }
+
+                return ans;
+            }
+            
+            //smartLength=actualLength*K, k=1/terrainSize, SizedLenght=256lng/k
+            private double lengthToSmartK()
+            {
+                double ans = 1.0f;
+                if (displaySettings.UseTrueSize_SmartifyLenghts && worldData.BoardLayout!=null)
+                {
+                    ans = 256/worldData.BoardLayout.TerrainSize;
+                }
+                return ans;
+            }
+
+            private double lengthToSmartK2()
+            {
+                double ans = 1.0f;
+                if (displaySettings.UseTrueSize_SmartifyLenghts && worldData.BoardLayout != null)
+                {
+                    ans = 256 * worldData.BoardLayout.TerrainsPerBoard / worldData.BoardLayout.TerrainSize;
+                }
+                return ans;
+            }
+
+        public void wipeUnnecData()
+            {
+                selectedTerrain = null;
+                selectedMountain = null;
             }
     }
 
@@ -1151,6 +1240,8 @@ using System.Windows.Forms;
             public bool ApplyHills { get; set; } = true;
             public HeightMode HeightMode { get; set; } = HeightMode.Average;
             public DisplayMode DisplayMode { get; set; } = DisplayMode.Flat;
+            public bool UseTrueSize { get; set; } = false; //if terrain size >256 and you want 1:1 scales with coords
+            public bool UseTrueSize_SmartifyLenghts { get; set; } = false; //turn true to have 1:1 coords and scales while UseTrueSize is false
         }
 
         public class TerrainBrush

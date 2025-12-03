@@ -323,7 +323,7 @@ namespace FTDMapgen_WinForms
                 Location = new Point(150, 98), //(100, 73)
                 Size = new Size(80, 20),
                 Minimum = 0,
-                Maximum = 10,
+                Maximum = 4,
                 Increment = 1
             };
             numBiome.ValueChanged += (s, e) =>
@@ -450,9 +450,11 @@ namespace FTDMapgen_WinForms
                 }
                 if (storeMountain != null)
                 {
-                    storeMountain.Radius = (float)numMountainRadius.Value;
+                    storeMountain.Radius = (float)numMountainRadius.Value;     
                     //Invalidate();
                 }
+                if (numMountainInnerRadius != null)
+                    numMountainInnerRadius.Maximum = numMountainRadius.Value;
                 Invalidate();
             };
 
