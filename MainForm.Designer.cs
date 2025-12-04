@@ -393,12 +393,12 @@ namespace FTDMapgen_WinForms
             {
                 if (selectedMountain != null)
                 {
-                    selectedMountain.Position = new PointF((float)numMountainX.Value, selectedMountain.Position.Y);
+                    selectedMountain.Position = new PointF((float)numMountainX.Value * lengthToSmartK2(), selectedMountain.Position.Y);
                     //Invalidate();
                 }
                 if (storeMountain != null)
                 {
-                    storeMountain.Position = new PointF((float)numMountainX.Value, storeMountain.Position.Y);
+                    storeMountain.Position = new PointF((float)numMountainX.Value * lengthToSmartK2(), storeMountain.Position.Y);
                     //Invalidate();
                 }
                 Invalidate();
@@ -419,12 +419,12 @@ namespace FTDMapgen_WinForms
             {
                 if (selectedMountain != null)
                 {
-                    selectedMountain.Position = new PointF(selectedMountain.Position.X, (float)numMountainY.Value);
+                    selectedMountain.Position = new PointF(selectedMountain.Position.X, (float)numMountainY.Value * lengthToSmartK2());
                     //Invalidate();
                 }
                 if (storeMountain != null)
                 {
-                    storeMountain.Position = new PointF(storeMountain.Position.X, (float)numMountainY.Value);
+                    storeMountain.Position = new PointF(storeMountain.Position.X, (float)numMountainY.Value * lengthToSmartK2());
                     //Invalidate();
                 }
                 Invalidate();
@@ -445,12 +445,12 @@ namespace FTDMapgen_WinForms
             {
                 if (selectedMountain != null)
                 {
-                    selectedMountain.Radius = (float)numMountainRadius.Value;
+                    selectedMountain.Radius = (float)numMountainRadius.Value * lengthToSmartK2();
                     //Invalidate();
                 }
                 if (storeMountain != null)
                 {
-                    storeMountain.Radius = (float)numMountainRadius.Value;     
+                    storeMountain.Radius = (float)numMountainRadius.Value * lengthToSmartK2();     
                     //Invalidate();
                 }
                 if (numMountainInnerRadius != null)
@@ -473,12 +473,12 @@ namespace FTDMapgen_WinForms
             {
                 if (selectedMountain != null)
                 {
-                    selectedMountain.InnerRadius = (float)numMountainInnerRadius.Value;
+                    selectedMountain.InnerRadius = (float)numMountainInnerRadius.Value * lengthToSmartK2();
                     
                 }
                 if (storeMountain != null)
                 {
-                    storeMountain.InnerRadius = (float)numMountainInnerRadius.Value;
+                    storeMountain.InnerRadius = (float)numMountainInnerRadius.Value * lengthToSmartK2();
                     
                 }
                 Invalidate();

@@ -973,9 +973,10 @@ using System.Runtime.CompilerServices;
             {
                 if (storeMountain != null)
                 {
-                    numMountainX.Value = (decimal)storeMountain.Position.X;
-                    numMountainY.Value = (decimal)storeMountain.Position.Y;
-                    numMountainRadius.Value = (decimal)storeMountain.Radius;
+                    numMountainX.Value = (decimal)(storeMountain.Position.X/lengthToSmartK2());
+                    numMountainY.Value = (decimal)(storeMountain.Position.Y/ lengthToSmartK2());
+                    numMountainRadius.Value = (decimal)(storeMountain.Radius/ lengthToSmartK2());
+                    numMountainInnerRadius.Value = (decimal)(storeMountain.InnerRadius / lengthToSmartK2());
                     numCenterBaseMod.Value = (decimal)storeMountain.CenterBaseHeightMod;
                     numBorderBaseMod.Value = (decimal)storeMountain.BorderBaseHeightMod;
                     numCenterScaleMod.Value = (decimal)storeMountain.CenterHeightScaleMod;
@@ -985,9 +986,10 @@ using System.Runtime.CompilerServices;
                 //у гор внезапно нет таких проблем с записью, как у террейна. Обожаю произведение своей смартности на смартный код дипсратя
                 if (selectedMountain != null)
                 {
-                    numMountainX.Value = (decimal)selectedMountain.Position.X;
-                    numMountainY.Value = (decimal)selectedMountain.Position.Y;
-                    numMountainRadius.Value = (decimal)selectedMountain.Radius;
+                    numMountainX.Value = (decimal)(selectedMountain.Position.X / lengthToSmartK2());
+                    numMountainY.Value = (decimal)(selectedMountain.Position.Y / lengthToSmartK2());
+                    numMountainRadius.Value = (decimal)(selectedMountain.Radius / lengthToSmartK2());
+                    numMountainInnerRadius.Value = (decimal)(selectedMountain.InnerRadius / lengthToSmartK2());
                     numCenterBaseMod.Value = (decimal)selectedMountain.CenterBaseHeightMod;
                     numBorderBaseMod.Value = (decimal)selectedMountain.BorderBaseHeightMod;
                     numCenterScaleMod.Value = (decimal)selectedMountain.CenterHeightScaleMod;
@@ -1174,14 +1176,16 @@ using System.Runtime.CompilerServices;
 
             private void updateNUDBoundaries()
             {
+                int maxSize = worldData.BoardLayout.BoardSections.Count;
+                if(maxSize<worldData.BoardLayout.BoardSections[0].Count) maxSize = worldData.BoardLayout.BoardSections[0].Count;
                 if (numMountainX != null)
-                    numMountainX.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize);
-                if (numMountainY != null)
-                    numMountainY.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize);
+                    numMountainX.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize /*/ (lengthToSmartK()*lengthToSmartK2())*/);
+                if (numMountainY != null)        //uses BordX dimension FOR SOME REASON
+                    numMountainY.Maximum = (decimal)(worldData.BoardLayout.BoardSections[0].Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize /*/ (lengthToSmartK() * lengthToSmartK2())*/);
                 if (numMountainRadius != null)
-                    numMountainRadius.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
+                    numMountainRadius.Maximum = (decimal)(maxSize * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2 /*/ (lengthToSmartK() * lengthToSmartK2())*/);
                 if (numMountainInnerRadius != null) //This code is for initialisation for case where the upper NUP is null for some reason (this should not happen)
-                    numMountainInnerRadius.Maximum = (decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
+                    numMountainInnerRadius.Maximum = (decimal)(maxSize * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2 /*/ (lengthToSmartK() * lengthToSmartK2())*/);
                 if (numMountainInnerRadius != null && numMountainRadius!=null) //this is updated in numMountainRadius change. This code is for initialisation
                     numMountainInnerRadius.Maximum = numMountainRadius.Value;//(decimal)(worldData.BoardLayout.BoardSections.Count * worldData.BoardLayout.TerrainsPerBoard * worldData.BoardLayout.TerrainSize / 2);
             }
@@ -1213,12 +1217,12 @@ using System.Runtime.CompilerServices;
                 return ans;
             }
 
-            private double lengthToSmartK2()
+            private float lengthToSmartK2()
             {
-                double ans = 1.0f;
-                if (displaySettings.UseTrueSize_SmartifyLenghts && worldData.BoardLayout != null)
+                float ans = 1.0f;
+                if (displaySettings.UseTrueSize_LieToFace && worldData.BoardLayout != null )
                 {
-                    ans = 256 * worldData.BoardLayout.TerrainsPerBoard / worldData.BoardLayout.TerrainSize;
+                    ans = (float)(256 /** worldData.BoardLayout.TerrainsPerBoard*/ / worldData.BoardLayout.TerrainSize);
                 }
                 return ans;
             }
@@ -1242,6 +1246,7 @@ using System.Runtime.CompilerServices;
             public DisplayMode DisplayMode { get; set; } = DisplayMode.Flat;
             public bool UseTrueSize { get; set; } = false; //if terrain size >256 and you want 1:1 scales with coords
             public bool UseTrueSize_SmartifyLenghts { get; set; } = false; //turn true to have 1:1 coords and scales while UseTrueSize is false
+            public bool UseTrueSize_LieToFace { get; set; } = true;
         }
 
         public class TerrainBrush
