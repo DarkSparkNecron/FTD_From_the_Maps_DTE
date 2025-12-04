@@ -11,6 +11,8 @@ namespace FTDMapgen_WinForms
 
     public class WorldData
     {
+        [JsonPropertyName("RedactorInfo")]
+        public NonStaticProgramInfo RedactorInfo { get; set; }
         [JsonPropertyName("Physics")]
         public Physics Physics { get; set; }
 
@@ -34,6 +36,10 @@ namespace FTDMapgen_WinForms
 
         [JsonPropertyName("GameConfiguration")]
         public GameConfiguration GameConfiguration { get; set; }
+        [JsonPropertyName("DisplaySettings")]
+        public DisplaySettings DisplaySettings { get; set; }
+        [JsonPropertyName("Mountains")]
+        public List<Mountain> mountains { get; set; }
     }
 
     public class Physics
@@ -150,13 +156,13 @@ namespace FTDMapgen_WinForms
         public int Biome { get; set; }
 
         [JsonPropertyName("HeightScale")]
-        public double HeightScale { get; set; }
+        public double HeightScaleFR { get; set; }
 
         [JsonPropertyName("Seed")]
         public int Seed { get; set; }
 
         [JsonPropertyName("BaseHeight")]
-        public double BaseHeight { get; set; }
+        public double BaseHeightFR { get; set; }
 
         [JsonPropertyName("PerlinFrequency")]
         public int PerlinFrequency { get; set; }
@@ -175,13 +181,20 @@ namespace FTDMapgen_WinForms
 
         [JsonPropertyName("EdgeWest")]
         public double EdgeWest { get; set; }
+        [JsonPropertyName("BaseHeight0")]
+        public double? BaseHeight { get; set; }
+        [JsonPropertyName("HeightScale0")]
+        public double? HeightScale { get; set; }
 
         public void copyDataFrom(Terrain t)
         {
             this.Biome = t.Biome;
             this.BaseHeight = t.BaseHeight;
             this.HeightScale = t.HeightScale;
-            
+
+            this.BaseHeightFR = t.BaseHeightFR;
+            this.HeightScaleFR = t.HeightScaleFR;
+
             this.Seed = t.Seed;
 
             this.PerlinFrequency = t.PerlinFrequency;

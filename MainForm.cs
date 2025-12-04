@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
  
 
@@ -25,7 +26,7 @@ using System.Runtime.CompilerServices;
 
             // Настройки отображения
             private DisplaySettings displaySettings = new DisplaySettings();
-            private List<Mountain> mountains = new List<Mountain>();
+            //private List<Mountain> mountains = new List<Mountain>();
 
             // Система отмены
             private Stack<TerrainAction> undoStack = new Stack<TerrainAction>(); //redundent functional
@@ -135,6 +136,30 @@ using System.Runtime.CompilerServices;
 
             private void InitializeWorldData() //TEMPORARY FOR DEBUG. INITIALIZATION IS INSUFFICIENT
             {
+                if(worldData.RedactorInfo==null)
+                {
+                    worldData.RedactorInfo = new NonStaticProgramInfo();
+                    worldData.RedactorInfo.refresh();
+                }
+                if(worldData.DisplaySettings!=null)
+                {
+                    worldData.DisplaySettings.init();
+                    displaySettings.copyDataFrom(worldData.DisplaySettings);
+                }
+                if(worldData.DisplaySettings==null)
+                {
+                    worldData.DisplaySettings = new DisplaySettings();
+                }
+                
+
+                //Обработка TerrainFR->Terrain для высот и холмистости, работает только первый раз при переходе из редактора смарта)
+                if (worldData.BoardLayout != null)
+                {
+                    initBasesForTerrains();
+                }
+        
+                if(worldData.mountains==null) worldData.mountains = new List<Mountain>();
+
                 // Создаем базовую структуру если данных нет
                 if (worldData.BoardLayout == null)
                 {
@@ -178,6 +203,41 @@ using System.Runtime.CompilerServices;
                             row.Add(section);
                         }
                         worldData.BoardLayout.BoardSections.Add(row);
+                    }
+                }
+            }
+
+            private void initBasesForTerrains()
+            {
+                if (worldData.BoardLayout != null)
+                {
+                    int boardsY = worldData.BoardLayout.BoardSections.Count;
+                    int boardsX = boardsY > 0 ? worldData.BoardLayout.BoardSections[0].Count : 0;
+                    for (int boardY = 0; boardY < boardsY; boardY++)
+                    {
+                        var boardRow = worldData.BoardLayout.BoardSections[boardY];
+                        for (int boardX = 0; boardX < boardRow.Count; boardX++)
+                        {
+                            var boardSection = boardRow[boardX];
+                            if (boardSection?.Terrains == null) continue;
+
+                            int terrainsY = boardSection.Terrains.Count;
+                            int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
+
+                            for (int terrainY = 0; terrainY < terrainsY; terrainY++)
+                            {
+                                var terrainRow = boardSection.Terrains[terrainY];
+                                for (int terrainX = 0; terrainX < terrainsX; terrainX++)
+                                {
+                                    var terrain = terrainRow[terrainX];
+                                    if (terrain == null) continue;
+                                    if (terrain.HeightScale == null)
+                                        terrain.HeightScale = terrain.HeightScaleFR;
+                                    if (terrain.BaseHeight == null)
+                                        terrain.BaseHeight = terrain.BaseHeightFR;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -325,8 +385,8 @@ using System.Runtime.CompilerServices;
                 PointF desmartifiedPos = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
                 
                 // Применяем модификаторы от гор
-                if (displaySettings.ApplyHills)
-                foreach (var mountain in mountains)
+                if ((bool)displaySettings.ApplyHills)
+                foreach (var mountain in worldData.mountains)
                 {
                     float distance = Distance0(desmartifiedPos, mountain.Position)* (float)lengthToSmartK();
                     if (distance <= mountain.Radius * (float)lengthToSmartK())
@@ -350,6 +410,11 @@ using System.Runtime.CompilerServices;
                 //    return worldData.BoardLayout.WorldHeightAndDepth * baseHeight; // RawHeight
                 //    
                 //}
+
+                // Запись реальной высоты и холмистости
+                terrain.BaseHeightFR = baseHeight;
+                terrain.HeightScaleFR = heightScale;
+
 
                 return displaySettings.HeightMode switch
                 {
@@ -497,7 +562,7 @@ using System.Runtime.CompilerServices;
 
         private void DrawMountains(Graphics g)
             {
-                foreach (var mountain in mountains)
+                foreach (var mountain in worldData.mountains)
                 {
                     var screenPos = WorldToScreen2(mountain.Position);
                     screenPos.X *= 1f;//(float)lengthToSmartK();
@@ -786,7 +851,7 @@ using System.Runtime.CompilerServices;
         private Mountain? getMountainForeach(PointF worldPos)
         {
             PointF worldPosInSizedCoords = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
-            foreach (Mountain m in mountains)
+            foreach (Mountain m in worldData.mountains)
             {
                 if(Distance0(worldPosInSizedCoords, m.Position) < (20 / (float)lengthToSmartK()))
                 {
@@ -801,7 +866,7 @@ using System.Runtime.CompilerServices;
         {
             // Сначала проверяем горы
             PointF worldPosInSizedCoords = new PointF(worldPos.X / (float)lengthToSmartK(), worldPos.Y / (float)lengthToSmartK());
-            selectedMountain = mountains.LastOrDefault(m => Distance0(worldPosInSizedCoords, m.Position) < (20 / (float)lengthToSmartK())); //FSR it has problems with vertical maps (below the upper square it cannot catch !=null)
+            selectedMountain = worldData.mountains.LastOrDefault(m => Distance0(worldPosInSizedCoords, m.Position) < (20 / (float)lengthToSmartK())); //FSR it has problems with vertical maps (below the upper square it cannot catch !=null)
             //this.Text=("ABOBA " + worldPosInSizedCoords + "<-Coord CLICK" + Distance0(worldPosInSizedCoords, selectedMountain.Position) + "<" + (20 / (float)lengthToSmartK()) + " =" + (Distance0(worldPosInSizedCoords, selectedMountain.Position) < (20 / (float)lengthToSmartK())));
             //"System.ArgumentOutOfRangeException"
             //selectedMountain = getMountainForeach(worldPos);
@@ -925,7 +990,7 @@ using System.Runtime.CompilerServices;
                 storeMountain.Position = worldPos;
                 Mountain tempMountain = new Mountain { };
                 tempMountain.copyDataFrom(storeMountain);
-                mountains.Add(tempMountain);
+                worldData.mountains.Add(tempMountain);
                 //selectedMountain = storeMountain;
 
                 UpdateMountainProperties();
@@ -936,7 +1001,7 @@ using System.Runtime.CompilerServices;
             {
                 if(selectedMountain!=null)
                 {
-                    mountains.Remove(selectedMountain);
+                    worldData.mountains.Remove(selectedMountain);
                     selectedMountain = null;
                 }
                 UpdateMountainProperties();
@@ -1030,9 +1095,12 @@ using System.Runtime.CompilerServices;
             private void BtnNew_Click(object sender, EventArgs e)
             {
                 worldData = new WorldData();
-                mountains.Clear();
-                InitializeWorldData(); //temporary...
                 wipeUnnecData();
+                //mountains.Clear();
+                
+                InitializeWorldData(); //temporary...
+                worldData.RedactorInfo.refresh();
+
                 Invalidate();
             }
 
@@ -1047,9 +1115,9 @@ using System.Runtime.CompilerServices;
                         try
                         {
                             string json = await File.ReadAllTextAsync(dialog.FileName);
+                            wipeUnnecData();
                             worldData = JsonSerializer.Deserialize<WorldData>(json);
                             InitializeWorldData(); // Дополнительная инициализация
-                            wipeUnnecData();
                             LoadMountainsFromWorldData();
                             FitToView(); // Подгоняем под вид после загрузки
                             Invalidate();
@@ -1073,6 +1141,8 @@ using System.Runtime.CompilerServices;
                         try
                         {
                             SaveMountainsToWorldData();
+                            worldData.DisplaySettings.copyDataFrom(displaySettings);
+                            worldData.RedactorInfo.refresh();
                             var options = new JsonSerializerOptions { WriteIndented = true };
                             string json = JsonSerializer.Serialize(worldData, options);
                             await File.WriteAllTextAsync(dialog.FileName, json);
@@ -1100,7 +1170,7 @@ using System.Runtime.CompilerServices;
             private void LoadMountainsFromWorldData()
             {
                 // Загрузка гор из worldData
-                mountains.Clear();
+                //mountains.Clear();
             }
 
             private void SaveMountainsToWorldData()
@@ -1194,7 +1264,7 @@ using System.Runtime.CompilerServices;
             {
                 int ans = 1;
                 
-                if(displaySettings.UseTrueSize)
+                if((bool)displaySettings.UseTrueSize)
                 {
                     ans= (int)worldData.BoardLayout.TerrainSize;
                 }
@@ -1210,7 +1280,7 @@ using System.Runtime.CompilerServices;
             private double lengthToSmartK()
             {
                 double ans = 1.0f;
-                if (displaySettings.UseTrueSize_SmartifyLenghts && worldData.BoardLayout!=null)
+                if ((bool)displaySettings.UseTrueSize_SmartifyLenghts && worldData.BoardLayout!=null)
                 {
                     ans = 256/worldData.BoardLayout.TerrainSize;
                 }
@@ -1220,7 +1290,7 @@ using System.Runtime.CompilerServices;
             private float lengthToSmartK2()
             {
                 float ans = 1.0f;
-                if (displaySettings.UseTrueSize_LieToFace && worldData.BoardLayout != null )
+                if ((bool)displaySettings.UseTrueSize_LieToFace && worldData.BoardLayout != null )
                 {
                     ans = (float)(256 /** worldData.BoardLayout.TerrainsPerBoard*/ / worldData.BoardLayout.TerrainSize);
                 }
@@ -1241,13 +1311,38 @@ using System.Runtime.CompilerServices;
 
         public class DisplaySettings
         {
-            public bool ApplyHills { get; set; } = true;
+            [JsonPropertyName("ApplyHills")]
+            public bool? ApplyHills { get; set; } = true;
+            [JsonPropertyName("HeightMode")]
             public HeightMode HeightMode { get; set; } = HeightMode.Average;
+            [JsonPropertyName("DisplayMode")]
             public DisplayMode DisplayMode { get; set; } = DisplayMode.Flat;
-            public bool UseTrueSize { get; set; } = false; //if terrain size >256 and you want 1:1 scales with coords
-            public bool UseTrueSize_SmartifyLenghts { get; set; } = false; //turn true to have 1:1 coords and scales while UseTrueSize is false
-            public bool UseTrueSize_LieToFace { get; set; } = true;
-        }
+            [JsonPropertyName("UseTrueSize")]
+            public bool? UseTrueSize { get; set; } = false; //if terrain size >256 and you want 1:1 scales with coords
+            [JsonPropertyName("SmartifyLenghts")]
+            public bool? UseTrueSize_SmartifyLenghts { get; set; } = false; //turn true to have 1:1 coords and scales while UseTrueSize is false
+            [JsonPropertyName("LieToFace")]
+            public bool? UseTrueSize_LieToFace { get; set; } = true;
+
+            public void copyDataFrom(DisplaySettings t)
+            {
+                this.ApplyHills = t.ApplyHills;
+                this.HeightMode = t.HeightMode;
+                this.DisplayMode = t.DisplayMode;
+                this.UseTrueSize = t.UseTrueSize;
+                this.UseTrueSize_LieToFace = t.UseTrueSize_LieToFace;
+                this.UseTrueSize_SmartifyLenghts = t.UseTrueSize_SmartifyLenghts;
+            }
+            public void init()
+            {
+                if(this.ApplyHills==null) this.ApplyHills = true;
+                if (this.HeightMode == null) this.HeightMode = HeightMode.Average;
+                if (this.DisplayMode == null) this.DisplayMode = DisplayMode.Flat;
+                if (this.UseTrueSize == null) this.UseTrueSize = false;
+                if (this.UseTrueSize_LieToFace == null) this.UseTrueSize_LieToFace = false;
+                if (this.UseTrueSize_SmartifyLenghts == null) this.UseTrueSize_SmartifyLenghts = true;
+            }
+    }
 
         public class TerrainBrush
         {
