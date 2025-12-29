@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 namespace FTDMapgen_WinForms
 {
     using System.Collections.Generic;
+    using System.DirectoryServices;
     using System.Text.Json.Serialization;
 
     public class WorldData
@@ -40,6 +41,368 @@ namespace FTDMapgen_WinForms
         public DisplaySettings DisplaySettings { get; set; }
         [JsonPropertyName("Mountains")]
         public List<Mountain> mountains { get; set; }
+
+        //BTW this method will crash if worldDataAdditional is smaller at any dimension than the WorldData
+        public void copyFrom(WorldData worldDataAdditional, WorldCopyingParams settings)
+        {
+            //redactor info
+            //displaySettings
+
+            if (settings.CopyPhysics)Physics = worldDataAdditional.Physics;
+
+            //mountains
+            if (settings.addMountains) mountains.AddRange(worldDataAdditional.mountains);
+
+            if (settings.CopyAreaWeatherTemplates==AreaWeatherCopySetting.ReplaceAreaWeather || settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.ReplaceAreaAddWeather) Areas = worldDataAdditional.Areas;
+            if (settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.ReplaceAreaWeather || settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.AddAreaReplaceWeather)
+            {
+                Weather = worldDataAdditional.Weather;
+            }
+            if (settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.AddAreaAddWeather || settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.AddAreaReplaceWeather)
+            {
+                Areas.Areas.AddRange(worldDataAdditional.Areas.Areas);
+            }
+            if (settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.AddAreaAddWeather || settings.CopyAreaWeatherTemplates == AreaWeatherCopySetting.ReplaceAreaAddWeather)
+            {
+                Weather.Weathers.AddRange(worldDataAdditional.Weather.Weathers);
+            }
+            if (settings.CopyPhases == CopySetting.Replace) Phases = worldDataAdditional.Phases;
+            if (settings.CopyPhases == CopySetting.Replace) 
+            {
+                Phases.Phases.AddRange(worldDataAdditional.Phases.Phases);
+                Phases.PhaseCount += worldDataAdditional.Phases.PhaseCount;
+            }
+
+            if (settings.CopyUtilitySran)
+            {
+                Unlocks = worldDataAdditional.Unlocks;
+                AdventureModeSettings = worldDataAdditional.AdventureModeSettings;
+            }
+
+            if (settings.CopyGameConfig) GameConfiguration = worldDataAdditional.GameConfiguration;
+
+            //board layout
+            if (settings.CopyGlobalTerrainSettings)
+            {
+                BoardLayout.HeightMapResolution = worldDataAdditional.BoardLayout.HeightMapResolution;
+                BoardLayout.EdgeEffectDistance = worldDataAdditional.BoardLayout.EdgeEffectDistance;
+                BoardLayout.StitchWidth = worldDataAdditional.BoardLayout.StitchWidth;
+                BoardLayout.WorldHeightAndDepth = worldDataAdditional.BoardLayout.WorldHeightAndDepth;
+
+                BoardLayout.TerrainSize = worldDataAdditional.BoardLayout.TerrainSize;
+            }
+
+            bool initReferencelessTerrain= BoardLayout.TerrainsPerBoard>worldDataAdditional.BoardLayout.TerrainsPerBoard;
+            int oldSize = BoardLayout.TerrainsPerBoard;
+            int newSize = worldDataAdditional.BoardLayout.TerrainsPerBoard;
+
+
+            if (!settings.BoardReshape) this.reshapeMap(worldDataAdditional.BoardLayout.BoardSections[0].Count, worldDataAdditional.BoardLayout.BoardSections.Count, worldDataAdditional.BoardLayout.TerrainsPerBoard);
+
+            if (BoardLayout != null && false)
+            {
+                int boardsY = BoardLayout.BoardSections.Count; //old sizes
+                int boardsX = boardsY > 0 ? BoardLayout.BoardSections[0].Count : 0;
+
+                int refBoardsY= worldDataAdditional.BoardLayout.BoardSections.Count; //new sizes
+                int refBoardsX = refBoardsY > 0 ? worldDataAdditional.BoardLayout.BoardSections[0].Count : 0;
+
+                
+                for (int boardY = 0; boardY < boardsY; boardY++)
+                {
+                    var boardRow = BoardLayout.BoardSections[boardY]; //old row size
+                    var refBoardRow = worldDataAdditional.BoardLayout.BoardSections[boardY]; //new row size
+                    //NULLIFY ROW IF SIZE GETS SMALLER AND CONTINUE
+                    for (int boardX = 0; boardX < boardRow.Count; boardX++)
+                    {
+                        var boardSection = boardRow[boardX]; //old row length
+                        var refSection = worldDataAdditional.BoardLayout.BoardSections[boardY][boardX]; //ПОД ЧЕМ ТЫ ЭТО ПИСАЛ ВООБЩЕ??? ладно отмена паники
+                        
+                        if (settings.CopyBoardLayoutData)
+                        {
+                            boardSection.AreaId = refSection.AreaId;
+                            boardSection.GarrisonLocation = refSection.GarrisonLocation;
+                            boardSection.LandGarrisonLocation = refSection.LandGarrisonLocation;
+                        }
+
+                        //NLLIFY BOARD SECTION IF THE SIZE GETS SMALLER AND CONTINUE
+
+                        if (boardSection?.Terrains == null) continue;
+
+                        //terrains are not setted for ref yet
+                        int terrainsY = boardSection.Terrains.Count;
+                        int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
+
+                        for (int terrainY = 0; terrainY < terrainsY; terrainY++)
+                        {
+                            var terrainRow = boardSection.Terrains[terrainY];
+                            var refTerrainRow = refSection.Terrains[terrainY];
+                            //NULLIFY ROW IF SIZE GETS SMALLER AND CONTINUE
+                            for (int terrainX = 0; terrainX < terrainsX; terrainX++)
+                            {
+                                var terrain = terrainRow[terrainX];
+                                var refTerrain = refTerrainRow[terrainX];
+
+                                if (terrain == null)
+                                { 
+                                    terrain = new Terrain();
+                                    terrain.initSimple();
+                                }
+
+                                //situation where there is nothing to copy
+                                if((terrainY> worldDataAdditional.BoardLayout.TerrainsPerBoard-1) || (terrainX > worldDataAdditional.BoardLayout.TerrainsPerBoard - 1))
+                                {
+                                    continue;
+                                }else
+                                {
+                                    if (settings.CopyTerrainPerlin)
+                                    {
+                                        terrain.PerlinFrequency = refTerrain.PerlinFrequency;
+                                        terrain.PerlinOctaves = refTerrain.PerlinOctaves;
+                                    }
+                                    if (settings.CopyTerrainEdges)
+                                    {
+                                        terrain.EdgeNorth = refTerrain.EdgeNorth;
+                                        terrain.EdgeSouth = refTerrain.EdgeSouth;
+                                        terrain.EdgeEast = refTerrain.EdgeEast;
+                                        terrain.EdgeWest = refTerrain.EdgeWest;
+                                    }
+                                    if(settings.CopyTerrainSeed) terrain.Seed = refTerrain.Seed;
+                                    if(settings.CopyTerrainLiterally)
+                                    {
+                                        terrain.copyDataFrom(refTerrain);
+                                    }
+                                }
+
+                                //NLLIFY IF THE SIZE GETS SMALLER AND CONTINUE
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            //if (settings.BoardReshape && (BoardLayout.TerrainsPerBoard == 0 || BoardLayout.TerrainsPerBoard < worldDataAdditional.BoardLayout.TerrainsPerBoard)) BoardLayout.TerrainsPerBoard = worldDataAdditional.BoardLayout.TerrainsPerBoard;
+
+        }
+
+
+        public void reshapeMap(int newBoardX, int newBoardY, int newTerrainsPerBoard)
+        {
+            
+
+            
+            int oldSize = BoardLayout.TerrainsPerBoard;
+            
+            //SHRINK MAP
+            if (BoardLayout != null)
+            {
+                int boardsY = BoardLayout.BoardSections.Count; //old sizes
+                int boardsX = boardsY > 0 ? BoardLayout.BoardSections[0].Count : 0;
+
+
+
+
+                for (int boardY = boardsY-1; boardY >= newBoardY*0; boardY--)
+                {
+                    var boardRow = BoardLayout.BoardSections[boardY]; //old row size
+                    
+                    //NULLIFY ROW IF SIZE GETS SMALLER AND CONTINUE
+                    for (int boardX = boardRow.Count-1; boardX >= boardRow.Count*0; boardX--)
+                    {
+                        var boardSection = boardRow[boardX]; //old row length
+                        
+                        //if (boardSection?.Terrains == null) continue;
+
+                        //terrains are not setted for ref yet
+                        int terrainsY = boardSection.Terrains.Count;
+                        int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
+
+                        for (int terrainY = terrainsY-1; terrainY >= newTerrainsPerBoard; terrainY--)
+                        {
+                            var terrainRow = boardSection.Terrains[terrainY];
+                            
+                            for (int terrainX = terrainsX-1; terrainX >= newTerrainsPerBoard; terrainX--)
+                            {
+                                var terrain = terrainRow[terrainX];
+                                
+
+                                if (terrain == null && false)
+                                {
+                                    terrain = new Terrain();
+                                    terrain.initSimple();
+                                }
+
+                                if(terrainX>= newTerrainsPerBoard && false)
+                                {
+                                    terrainRow.Remove(terrain);
+                                    terrain = null;
+                                }
+
+                            }
+                            if (terrainY >= newTerrainsPerBoard && false)
+                            {
+                                boardSection.Terrains.Remove(terrainRow);
+                                terrainRow = null;
+                            }
+                        }
+
+                        if (boardX >= newBoardX)
+                        {
+                            boardRow.Remove(boardSection);
+                            boardSection = null;
+                        }
+
+
+                    }
+
+                    if (boardY >= newBoardY)
+                    {
+                        BoardLayout.BoardSections.Remove(boardRow);
+                        boardRow = null;
+                    }
+
+
+                }
+
+                
+                foreach(List<BoardSection> LBS in BoardLayout.BoardSections)
+                {
+                    foreach(BoardSection BS in LBS)
+                    {
+                        int terrainsY = BS.Terrains.Count;
+                        int terrainsX = terrainsY > 0 ? BS.Terrains[0].Count : 0;
+                        for (int terrainY = terrainsY-1; terrainY >= newTerrainsPerBoard*0; terrainY--)
+                        {
+                            var terrainRow = BS.Terrains[terrainY];
+                            terrainsX = terrainRow.Count;
+                            if (true)
+                            for (int terrainX = terrainsX-1; terrainX >= newTerrainsPerBoard*0; terrainX--)
+                            {
+                                var terrain = terrainRow[terrainX];
+
+
+                                if (terrain == null && false)
+                                {
+                                    terrain = new Terrain();
+                                    terrain.initSimple();
+                                }
+
+                                if (terrainX >= newTerrainsPerBoard)
+                                {
+                                    terrainRow.Remove(terrain);
+                                    terrain = null;
+                                }
+
+                            }
+                            if (terrainY >= newTerrainsPerBoard)
+                            {
+                                BS.Terrains.Remove(terrainRow);
+                                terrainRow = null;
+                            }
+                        }
+                    }
+                }
+                BoardLayout.TerrainsPerBoard = newTerrainsPerBoard;
+            }
+
+            //EXPAND MAP
+            if (BoardLayout != null)
+            {
+                int boardsY = BoardLayout.BoardSections.Count; //old sizes
+                int boardsX = boardsY > 0 ? BoardLayout.BoardSections[0].Count : 0;
+
+                
+
+
+                for (int boardY = 0; boardY < newBoardY; boardY++)
+                {
+
+                    List<BoardSection> boardRow;
+                    if(boardY >= boardsY)
+                    {
+                        boardRow = new List<BoardSection>();
+                        BoardLayout.BoardSections.Add(boardRow);
+                    }
+                    else
+                    {
+                        boardRow = BoardLayout.BoardSections[boardY];
+                    }
+                    
+                    
+                    for (int boardX = 0; boardX < newBoardX; boardX++)
+                    {
+                        BoardSection boardSection;
+                        if (boardX >= boardRow.Count)
+                        {
+                            boardSection = new BoardSection();
+                            boardSection.AreaId = new AreaId();
+                            boardSection.AreaId.Id = 0;
+                            boardSection.LandGarrisonLocation = null;//?..
+                            boardSection.garrisonVectorToStringIdiotic();
+                            boardSection.Terrains = new List<List<Terrain>>();
+                            boardRow.Add(boardSection);
+                        }
+                        else
+                        {
+                            boardSection = boardRow[boardX];
+                        }
+                        
+
+                        int terrainsY = boardSection.Terrains.Count;
+                        int terrainsX = terrainsY > 0 ? boardSection.Terrains[0].Count : 0;
+                        if(true)
+                        for (int terrainY = terrainsY*0; terrainY < newTerrainsPerBoard; terrainY++) //vertical lines
+                        {
+
+                            List<Terrain> terrainRow;
+                            if (terrainY >= oldSize || terrainsY==0)
+                            {
+                                terrainRow = new List<Terrain>();
+                                boardSection.Terrains.Add(terrainRow);
+                            }
+                            else
+                            {
+                                terrainRow = boardSection.Terrains[terrainY];
+                            }
+
+                            int initCount = terrainRow.Count;
+                            for (int terrainX = initCount; terrainX < newTerrainsPerBoard; terrainX++)
+                            {
+                                Terrain terrain;
+                                if (terrainX >= oldSize || initCount == 0)
+                                {
+                                    terrain = new Terrain();
+                                    terrain.initSimple();
+                                    terrainRow.Add(terrain);
+                                }
+                                else
+                                {
+                                    terrain = terrainRow[terrainX];
+                                    //and idk, because everything is fine with that terrain
+                                }
+
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            //DELETE MOUNTAINS OUT OF BOUNDS
+            //mountain position is stored in 256 terrain size, but lied in GUI
+            int maxX = newBoardX * newTerrainsPerBoard * 256;
+            int maxY = newBoardY * newTerrainsPerBoard * 256;
+            foreach (Mountain m in this.mountains)
+            {
+                if(m.Position.X>maxX || m.Position.Y>maxY)
+                {
+                    this.mountains.Remove(m);
+                    //it is not giving me an ability to set m to null. I care for your memory!
+                }
+            }
+
+        }
     }
 
     public class Physics
@@ -142,6 +505,18 @@ namespace FTDMapgen_WinForms
 
         [JsonPropertyName("LandGarrisonLocation")]
         public Vector3Data LandGarrisonLocation { get; set; }
+
+        public void garrisonVectorToStringIdiotic()
+        {
+            if(LandGarrisonLocation!=null)
+            {
+                GarrisonLocation = LandGarrisonLocation.X + "," + LandGarrisonLocation.Y +","+ LandGarrisonLocation.Z;
+            }
+            else
+            {
+                GarrisonLocation = "0,0,0";
+            }
+        }
     }
 
     public class AreaId
@@ -204,6 +579,35 @@ namespace FTDMapgen_WinForms
             this.EdgeNorth = t.EdgeNorth;
             this.EdgeSouth = t.EdgeSouth;
             this.EdgeWest = t.EdgeWest;
+        }
+
+        public void newSeed()
+        {
+            Random rnd = new Random();
+            Seed = rnd.Next(100, 10000);
+        }
+        public void perlinForDummies()
+        {
+            PerlinFrequency = 4;
+            PerlinOctaves = 5;
+        }
+        public void initSimple()
+        {
+            this.Biome = 0;
+            this.BaseHeight = 0;
+            this.HeightScale = 0;
+
+            this.BaseHeightFR = 0;
+            this.HeightScaleFR = 0;
+
+            this.newSeed();
+            this.perlinForDummies();
+
+            //idk how it work honestly. It is terrain smoothing probably
+            this.EdgeEast = 0;
+            this.EdgeNorth = 0;
+            this.EdgeSouth = 0;
+            this.EdgeWest = 0;
         }
     }
 

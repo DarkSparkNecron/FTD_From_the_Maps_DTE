@@ -15,7 +15,7 @@ namespace FTDMapgen_WinForms
 
         public static string Name = "From the Maps";
         public static string Subname = "Dnische Terrain Editor"; //=DTE
-        public static float Version = 0.9f;
+        public static float Version = 0.95f;
         public static string[] Authors = new string[] { "Dark Spark | Dnischenfuhrer and the Great Rod Necron" }; //unnecessary self-glorification is always welcomed?
     }
 

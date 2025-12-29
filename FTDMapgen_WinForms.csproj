@@ -8,4 +8,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+
+	<Target Name="CopyAssetsAndGost" AfterTargets="Build">
+		<ItemGroup>
+			<!-- Указываем, какие папки копировать -->
+			<AssetFolder Include="assets\**" />
+		</ItemGroup>
+
+		<!-- Удаляем старые версии папок -->
+		<RemoveDir Directories="$(OutputPath)\assets" />
+
+		<!-- Копируем файлы -->
+		<Copy SourceFiles="@(assetFolder)"
+			  DestinationFolder="$(OutputPath)%(RecursiveDir)\assets"
+			  SkipUnchangedFiles="true" />
+	</Target>
+
 </Project>

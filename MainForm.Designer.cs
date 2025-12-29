@@ -27,6 +27,7 @@ namespace FTDMapgen_WinForms
         private Button btnSave;
         private Button btnUndo;
         private Button btnRedo;
+        private Button btnRage;
 
         // Настройки отображения
         private CheckBox chkApplyHills;
@@ -95,26 +96,33 @@ namespace FTDMapgen_WinForms
                 BackColor = Color.LightGray
             };
 
-            // Кнопки файлов
-            btnNew = CreateButton("New", 10);
-            btnOpen = CreateButton("Open", 60);
-            btnSave = CreateButton("Save", 110);
-            btnUndo = CreateButton("Undo", 160);
-            btnRedo = CreateButton("Redo", 210);
+            // Кнопки файлов. tart=10, +=50, st lng 45
+            btnNew = CreateButton("New", 10); //10
+            btnOpen = CreateButton("Open", 110); //60
+            btnSave = CreateButton("Save", 160); //110
+            btnUndo = CreateButton("Undo", 210); //160
+            btnRedo = CreateButton("Redo", 260); //210
+
+            btnNew.Enabled = false;
+            btnRedo.Enabled = false;
+            btnUndo.Enabled = false;
 
             // Кнопки инструментов
-            btnSelect = CreateButton("Select", 260);
-            btnBrush = CreateButton("Brush", 310);
-            btnMountain = CreateButton("Mountain", 360);
+            int instrumentRightOffset = 600;
+            btnSelect = CreateButton("Select", instrumentRightOffset, 90); //260
+            btnBrush = CreateButton("Brush", instrumentRightOffset+95, 90); //310
+            btnMountain = CreateButton("Mountain", instrumentRightOffset+95*2, 90); //360
+
+            btnRage = CreateButton("Meta", 60);
 
             toolPanel.Controls.AddRange(new Control[] {
             btnNew, btnOpen, btnSave, btnUndo, btnRedo,
-            btnSelect, btnBrush, btnMountain
+            btnSelect, btnBrush, btnMountain, btnRage
             });
 
             this.Controls.Add(toolPanel);//в конец?
 
-            Button btnFitToView = CreateButton("Fit", 410);
+            Button btnFitToView = CreateButton("Fit", 310); //410
             btnFitToView.Click += (s, e) => FitToView();
 
             toolPanel.Controls.Add(btnFitToView);
@@ -240,6 +248,16 @@ namespace FTDMapgen_WinForms
                 Text = text,
                 Location = new Point(x, 8),
                 Size = new Size(45, 25)
+            };
+        }
+
+        private Button CreateButton(string text, int x, int lng)
+        {
+            return new Button
+            {
+                Text = text,
+                Location = new Point(x, 8),
+                Size = new Size(lng, 25)
             };
         }
 

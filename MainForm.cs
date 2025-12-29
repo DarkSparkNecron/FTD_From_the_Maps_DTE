@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Windows.Forms;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using System.Media;
 
  
 
@@ -23,6 +24,7 @@ using System.Text.Json.Serialization;
             private WorldData worldData = new WorldData(); // Инициализация по умолчанию
             private Bitmap terrainBitmap;
             private Graphics terrainGraphics;
+            private WorldData worldDataAdditional = new WorldData();
 
             // Настройки отображения
             private DisplaySettings displaySettings = new DisplaySettings();
@@ -51,6 +53,7 @@ using System.Text.Json.Serialization;
                 PerlinFrequency = 4,
                 PerlinOctaves = 5
             }; //terrain for brush
+            private Terrain previousSeletedTerrain = null;
             private Mountain storeMountain = null; //mountain for brush
             private bool isDraggingMountain = false;
             private Point lastMousePos;
@@ -60,6 +63,13 @@ using System.Text.Json.Serialization;
 
             private GroupBox terrainPropertiesGroup;
             private GroupBox mountainPropertiesGroup;
+
+            SoundPlayer soundSmartGameDev = new SoundPlayer("assets/SmartGameDev.wav");
+            SoundPlayer soundAmogus = new SoundPlayer("assets/among-us-roundstart.wav");
+            SoundPlayer soundSAS = new SoundPlayer("assets/SAS.wav");
+            SoundPlayer sooundYouShouldHaveNotBeHere = new SoundPlayer("assets/goofy-ahh-backrooms.wav");
+            SoundPlayer soundCreepyLaugh = new SoundPlayer("assets/goofy-ah-laugh.wav");
+
 
         // Цвета биомов
         private static readonly Dictionary<int, Color> BiomeColors = new Dictionary<int, Color>
@@ -78,6 +88,7 @@ using System.Text.Json.Serialization;
                 InitializeTerrainBitmap();
                 SetupEventHandlers();
                 FitToView(); // Автоматическое подгонка под вид
+                soundSmartGameDev.PlayLooping();
             }
 
             private void InitializeTerrainBitmap()
@@ -101,9 +112,10 @@ using System.Text.Json.Serialization;
                 btnSave.Click += BtnSave_Click;
                 btnUndo.Click += BtnUndo_Click;
                 btnRedo.Click += BtnRedo_Click;
+                btnRage.Click += BtnSRAT_Click;
                 //Mountain Delete is in designer
 
-                // Обработчики изменения настроек
+            // Обработчики изменения настроек
                 cmbHeightMode.SelectedIndexChanged += SettingsChanged;
                 cmbDisplayMode.SelectedIndexChanged += SettingsChanged;
                 chkApplyHills.CheckedChanged += SettingsChanged;
@@ -119,6 +131,8 @@ using System.Text.Json.Serialization;
                 {
                     currentMode = EditorMode.Select;
                     UpdateToolButtons();
+                    //soundCreepyLaugh.PlaySync();
+                    //soundSmartGameDev.PlayLooping();
                 };
 
                 btnBrush.Click += (s, e) =>
@@ -431,17 +445,20 @@ using System.Text.Json.Serialization;
         {
             float waterLevel = (float)numWaterLevel.Value;
             float minHeight = -worldData.BoardLayout.WorldHeightAndDepth; //* (1 + 0.2f); // ScaledHeightMin с k2=0.2
-            float maxHeight = worldData.BoardLayout.WorldHeightAndDepth * 2;//* (1 + 0.8f);  // ScaledHeightMax с k1=0.8
+            float maxHeight = worldData.BoardLayout.WorldHeightAndDepth; //* 2;//* (1 + 0.8f);  // ScaledHeightMax с k1=0.8
+            float midHeight = maxHeight / 2;
 
             // Нормализуем высоту в диапазон [0, 1]
             float normalized = (height - minHeight) / (maxHeight - minHeight);
-            normalized = Math.Max(0, Math.Min(1, normalized)); // Ограничиваем
+            normalized = Math.Max(0, Math.Min(1, normalized)); // Ограничиваем. И не используем, ЛОЛЧ.
 
             // Цветовые точки градиента
             Color darkBlue = Color.FromArgb(0, 0, 100);     // -500m
             Color lightBlue = Color.FromArgb(100, 150, 255); // 0m
             Color yellow = Color.FromArgb(255, 255, 0);     // Уровень моря
+            Color green = Color.FromArgb(0, 255, 0);        // пол пути от уровня моря до 500m
             Color darkBrown = Color.FromArgb(101, 67, 33);  // +500m
+            Color Red = Color.FromArgb(255, 0, 0);          // <=1000m
 
             if (height <= 0)
             {
@@ -456,13 +473,33 @@ using System.Text.Json.Serialization;
                 float beachFactor = height / waterLevel;
                 return InterpolateColor(lightBlue, yellow, beachFactor);
             }
-            else
+            else if (height <=midHeight)
+            {
+                // Выше уровня моря (первая половина): от желтого до зеленого
+                float landFactor = (height - waterLevel) / (midHeight - waterLevel);
+                landFactor = Math.Max(0, Math.Min(1, landFactor));
+                return InterpolateColor(yellow, green, landFactor);
+            }
+            else if (height <=maxHeight)
+            {
+                // Выше уровня моря (вторая половина): от зеленого до красно-коричневого
+                float landFactor = (height - midHeight) / (maxHeight - midHeight);
+                landFactor = Math.Max(0, Math.Min(1, landFactor));
+                return InterpolateColor(green, darkBrown, landFactor);
+            }else
+            {
+                // Выше стандартной максимальной высоты (за счет холмистости): от красно-коричневого до красного
+                float landFactor = (height - maxHeight) / (maxHeight * 2 - waterLevel);
+                landFactor = Math.Max(0, Math.Min(1, landFactor));
+                return InterpolateColor(darkBrown, Red, landFactor);
+            }
+            /*else
             {
                 // Выше уровня моря: от желтого до красно-коричневого
                 float landFactor = (height - waterLevel) / (maxHeight - waterLevel);
                 landFactor = Math.Max(0, Math.Min(1, landFactor));
                 return InterpolateColor(yellow, darkBrown, landFactor);
-            }
+            }*/
         }
 
         private Color GetHeightColorOld(float height)
@@ -1031,7 +1068,7 @@ using System.Text.Json.Serialization;
                     // Обновляем метры
                     UpdateMeterValues();
                 }
-                
+
             }
 
             private void UpdateMountainProperties()
@@ -1091,6 +1128,7 @@ using System.Text.Json.Serialization;
                 btnRedo.Enabled = redoStack.Count > 0;
             }
 
+
             // Обработчики кнопок
             private void BtnNew_Click(object sender, EventArgs e)
             {
@@ -1102,6 +1140,43 @@ using System.Text.Json.Serialization;
                 worldData.RedactorInfo.refresh();
 
                 Invalidate();
+            }
+
+            private async void BtnSRAT_Click(object sender, EventArgs e)
+            {
+                sooundYouShouldHaveNotBeHere.PlayLooping();
+                using (var dialog = new OpenFileDialog())
+                {
+                    dialog.Filter = "World files (*.world)|*.world|JSON files (*.json)|*.json|All files (*.*)|*.*";
+                    dialog.Title = "ИСПОЛЬЗУЙ ЭТО ЕСЛИ ТЫ ЛОХ ПРОСРАВШИЙ ЧАС НА NULL КАРТУ, ЧТОБЫ ЗАГРУЗИТЬ МЕТАСРАТЬ ИЗ ДРУГОЙ КАРТЫ - СПЕЦИАЛЬНО ДЛЯ АРОРАТОРА";
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        //UpdateToolButtons();
+                        try
+                        {
+                            string json = await File.ReadAllTextAsync(dialog.FileName);
+                            wipeUnnecData();
+                            worldDataAdditional = JsonSerializer.Deserialize<WorldData>(json);
+                            //InitializeWorldData(); // Дополнительная инициализация
+                            //LoadMountainsFromWorldData();
+                            //FitToView(); // Подгоняем под вид после загрузки
+
+                            //СУКА СПЕЦИАЛЬНАЯ КНОПКА ДЛЯ ДЕГЕНЕРАТОВ ЕБУЧИХ, КОТОРЫЕ ЗАСИРАЮ СЕБЕ ФАЙЛЫ
+
+                            WorldCopyingParams par = new WorldCopyingParams();
+                            worldData.copyFrom(worldDataAdditional, par);
+
+                            Invalidate();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Error loading file: {ex.Message}", "Error",
+                                          MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+                sooundYouShouldHaveNotBeHere.Stop();
+                soundSmartGameDev.PlayLooping();
             }
 
             private async void BtnOpen_Click(object sender, EventArgs e)
@@ -1156,8 +1231,8 @@ using System.Text.Json.Serialization;
                 }
             }
 
-            private void BtnUndo_Click(object sender, EventArgs e) { /* Реализация отмены */ }
-            private void BtnRedo_Click(object sender, EventArgs e) { /* Реализация повтора */ }
+            private void BtnUndo_Click(object sender, EventArgs e) { /* Реализация отмены */ soundAmogus.Play(); }
+            private void BtnRedo_Click(object sender, EventArgs e) { /* Реализация повтора */ soundSAS.Play(); }
 
             private void SettingsChanged(object sender, EventArgs e)
             {
@@ -1380,5 +1455,61 @@ using System.Text.Json.Serialization;
             public string Name { get; set; }
             // Дополнительные данные для отмены
         }
-    }
+
+        public class WorldCopyingParams
+        {
+            public bool CopyPhysics;
+            public bool CopyGlobalTerrainSettings;
+
+            public AreaWeatherCopySetting CopyAreaWeatherTemplates;
+            public CopySetting CopyPhases;
+            public bool CopyUtilitySran;
+            public bool CopyGameConfig;
+
+            public bool CopyBoardLayoutData;
+            public bool CopyTerrainLiterally; //never do
+            public bool CopyTerrainSeed;
+            public bool CopyTerrainPerlin;
+            public bool CopyTerrainEdges;
+
+            public bool BoardReshape; //never do!!! algo is not ready
+
+            public bool addMountains;
+
+            public WorldCopyingParams()
+            {
+                CopyPhysics=true;
+                CopyGlobalTerrainSettings=true;
+                CopyAreaWeatherTemplates = AreaWeatherCopySetting.ReplaceAreaWeather;
+                CopyPhases = CopySetting.Replace;
+                CopyUtilitySran =true;
+                CopyGameConfig=true;
+
+                CopyTerrainLiterally=false; //false
+
+                BoardReshape = false; //false
+
+                CopyBoardLayoutData = true;
+                CopyTerrainSeed =true;
+                CopyTerrainPerlin=true;
+                CopyTerrainEdges=true;
+                addMountains = false;
+            }
+        }
+
+        public enum AreaWeatherCopySetting
+        {
+            ReplaceAreaWeather,
+            AddAreaAddWeather,
+            AddAreaReplaceWeather,
+            ReplaceAreaAddWeather
+        }
+
+        public enum CopySetting
+        {
+            None,
+            Add,
+            Replace
+        }
+}
 
