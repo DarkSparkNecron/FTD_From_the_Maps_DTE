@@ -14,14 +14,13 @@ using System.Windows.Forms;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Media;
+using Microsoft.VisualBasic.Devices;
 
- 
-
-    namespace FTDMapgen_WinForms
+namespace FTDMapgen_WinForms
     {
         public partial class MainForm : Form
         {
-            private WorldData worldData = new WorldData(); // Инициализация по умолчанию
+            public WorldData worldData = new WorldData(); // Инициализация по умолчанию
             private Bitmap terrainBitmap;
             private Graphics terrainGraphics;
             private WorldData worldDataAdditional = new WorldData();
@@ -63,12 +62,17 @@ using System.Media;
 
             private GroupBox terrainPropertiesGroup;
             private GroupBox mountainPropertiesGroup;
+            private GroupBox AreaPrefabGroupLink;
 
             SoundPlayer soundSmartGameDev = new SoundPlayer("assets/SmartGameDev.wav");
             SoundPlayer soundAmogus = new SoundPlayer("assets/among-us-roundstart.wav");
             SoundPlayer soundSAS = new SoundPlayer("assets/SAS.wav");
             SoundPlayer sooundYouShouldHaveNotBeHere = new SoundPlayer("assets/goofy-ahh-backrooms.wav");
             SoundPlayer soundCreepyLaugh = new SoundPlayer("assets/goofy-ah-laugh.wav");
+
+            private Keyboard keyboard = new Keyboard();
+            PointF firstSelectionPoint;
+            PointF secondSelectionPoint;
 
 
         // Цвета биомов
@@ -89,6 +93,7 @@ using System.Media;
                 SetupEventHandlers();
                 FitToView(); // Автоматическое подгонка под вид
                 soundSmartGameDev.PlayLooping();
+                UpdateToolButtons();
             }
 
             private void InitializeTerrainBitmap()
@@ -425,7 +430,7 @@ using System.Media;
                 //    
                 //}
 
-                // Запись реальной высоты и холмистости
+                // Запись реальной высоты и холмистости. ARE U SURE????
                 terrain.BaseHeightFR = baseHeight;
                 terrain.HeightScaleFR = heightScale;
 
@@ -635,17 +640,52 @@ using System.Media;
             {
                 // Здесь будет рисование выделенных элементов
 
-                if(selectedTerrain!=null)
+                if(selectedTerrain!=null || currentMode==EditorMode.Area)
                 {
                     float[] CoordPair = getCoordsByTerrain(selectedTerrain);
                     //if (CoordPair == null) Break;
                     var SelectionPen = new Pen(Color.FromArgb(95, Color.White), 50);
+                    if(currentMode==EditorMode.Area)
+                    {
+                        float width = (secondSelectionPoint.X - firstSelectionPoint.X);
+                        float height = (secondSelectionPoint.Y - firstSelectionPoint.Y);
+                        PointF iEatYourRAM = firstSelectionPoint;
+                        //iEatYourRAM.X = CoordPair[0];
+                        //iEatYourRAM.Y = CoordPair[1];
+                        PointF upperLeft=new PointF();
+                        PointF downRight = new PointF();
+
+                        if(iEatYourRAM.Y< secondSelectionPoint.Y)
+                        {
+                            downRight.Y = secondSelectionPoint.Y-iEatYourRAM.Y + getCellSize();
+                            upperLeft.Y = iEatYourRAM.Y;
+                        }else
+                        {
+                            downRight.Y = iEatYourRAM.Y - secondSelectionPoint.Y + getCellSize();
+                            upperLeft.Y = secondSelectionPoint.Y;
+                        }
+
+                        if(iEatYourRAM.X< secondSelectionPoint.X)
+                        {
+                            upperLeft.X = iEatYourRAM.X;
+                            downRight.X = secondSelectionPoint.X- iEatYourRAM.X + getCellSize();
+                        }else
+                        {
+                            upperLeft.X = secondSelectionPoint.X;
+                            downRight.X = iEatYourRAM.X - secondSelectionPoint.X + getCellSize();
+                        }
+
+                        g.DrawRectangle(SelectionPen, upperLeft.X - 5, upperLeft.Y - 5, downRight.X + 5, downRight.Y + 5);
+                        //this.Text = iEatYourRAM + " ," + secondSelectionPoint+ " w"+width+" h"+height+" ;"+upperLeft+" ,"+downRight;
+                    }
+                    else
                     g.DrawRectangle(SelectionPen, CoordPair[0]-5, CoordPair[1]-5, getCellSize() + 5, getCellSize() + 5);
+                    //g.DrawRectangle(SelectionPen, firstSelectionPoint.X - 5, firstSelectionPoint.Y - 5, getCellSize() + 5, getCellSize() + 5);
 
                 }
             }
 
-        private float[] getCoordsByTerrain(Terrain t)
+        public float[] getCoordsByTerrain(Terrain t)
         {
             float[] ans =  new float[2];
             ans[0] = 0;
@@ -791,10 +831,48 @@ using System.Media;
                     else
                     {
                         // Режим выбора или горы - выбираем объект
-                        if (currentMode == EditorMode.Select)
+                        if (currentMode == EditorMode.Select || currentMode==EditorMode.Area)
                         {
-                            SelectTerrainOrMountain(worldPos);
-                            return;
+                            if (keyboard.ShiftKeyDown)
+                            {
+                                //area select
+                                Terrain temp = FindTerrainAtPosition(worldPos);
+                                if (temp != null)
+                                {
+                                    float[] temp2 = getCoordsByTerrain(temp);
+                                    float[] temp3;
+                                    if (selectedTerrain != null)
+                                    {
+                                        temp3 = getCoordsByTerrain(selectedTerrain);
+                                        firstSelectionPoint.X = temp3[0];
+                                        firstSelectionPoint.Y = temp3[1];
+                                    }
+                                    secondSelectionPoint.X = temp2[0];
+                                    secondSelectionPoint.Y = temp2[1];
+                                    currentMode = EditorMode.Area;
+                                    selectedTerrain = null;
+                                    //selectedTerrain = temp;
+                                    //currentMode = EditorMode.Select;
+                                    
+                                    UpdateTerrainProperties();
+                                    UpdateToolButtons();
+                                    return;
+                                }
+                                return;
+                            }
+                            else
+                            {
+                                SelectTerrainOrMountain(worldPos);
+                                if(selectedTerrain!=null)
+                                {
+                                    //currentMode = EditorMode.Select;
+                                    float[] temp3 = getCoordsByTerrain(selectedTerrain);
+                                    firstSelectionPoint.X = temp3[0];
+                                    firstSelectionPoint.Y = temp3[1];
+                                    return;
+                                }
+                                return;
+                            }
                         }
 
                         if (currentMode == EditorMode.Mountain /*&& selectedMountain == null*/)
@@ -948,7 +1026,7 @@ using System.Media;
             }
         }
 
-        private Terrain FindTerrainAtPosition(PointF worldPos)
+        public Terrain FindTerrainAtPosition(PointF worldPos)
         {
             if (worldData?.BoardLayout?.BoardSections == null) return null;
 
@@ -995,7 +1073,7 @@ using System.Media;
         }
 
             //applies BaseHeight,HeightScale,Biome of storeTerrain
-            private void ApplyBrush(PointF worldPos)
+            public void ApplyBrush(PointF worldPos)
             {
                 //System.Console.Out.WriteLine("YES!");
                 var targetTerrain = FindTerrainAtPosition(worldPos);
@@ -1215,6 +1293,13 @@ using System.Media;
                     {
                         try
                         {
+                            //Merge Edges for every tile, not ignoring biomes. Delete it later, because it can ruin some maps and/or arePrefabs
+                            foreach (List<BoardSection> LBS in worldData.BoardLayout.BoardSections)
+                                foreach (BoardSection BS in LBS)
+                                    foreach (List<Terrain> LT in BS.Terrains)
+                                        foreach (Terrain t in LT)
+                                            SMARTFUL_TERRAININFO_MergeEdges(t);
+
                             SaveMountainsToWorldData();
                             worldData.DisplaySettings.copyDataFrom(displaySettings);
                             worldData.RedactorInfo.refresh();
@@ -1259,8 +1344,8 @@ using System.Media;
                 //selectedTerrain = null;
                 selectedMountain = null;
                 updateNUDBoundaries();
-                if (currentMode==EditorMode.Brush)
-                {
+                if (currentMode==EditorMode.Brush) // || currentMode==EditorMode.Area
+            {
                     if (selectedTerrain == null)
                         selectedTerrain = new Terrain()
                         {
@@ -1297,15 +1382,21 @@ using System.Media;
                     selectedMountain = null;
                 }
 
-                bool showTerr = currentMode == EditorMode.Brush || (currentMode == EditorMode.Select && selectedTerrain != null);
+                bool showArea = currentMode==EditorMode.Area;
                 bool showMount = currentMode == EditorMode.Mountain || (currentMode == EditorMode.Select && selectedMountain != null);
-
+                bool showTerr = currentMode == EditorMode.Brush || (currentMode == EditorMode.Select && selectedTerrain != null) || (showArea && !showMount);
+                
                 // Обновляем видимость панелей свойств
                 if (terrainPropertiesGroup != null && showTerr)
                     terrainPropertiesGroup.Visible = true;
                 if (mountainPropertiesGroup != null && showMount)
                     mountainPropertiesGroup.Visible = true;
-            
+                if (AreaPrefabGroupLink!=null)
+                if(showArea) 
+                    AreaPrefabGroupLink.Visible = true;
+                else
+                    AreaPrefabGroupLink.Visible = false;
+
 
 
                 if (lblEditorModeVal != null)
@@ -1380,7 +1471,7 @@ using System.Media;
     }
 
         // Вспомогательные классы
-        public enum EditorMode { Select, Brush, Mountain }
+        public enum EditorMode { Select, Brush, Mountain, Area }
         public enum HeightMode { Average, Max, Min, Raw, Straight }
         public enum DisplayMode { Flat, Gradient, Ponos }
 

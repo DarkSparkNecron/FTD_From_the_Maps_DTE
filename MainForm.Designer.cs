@@ -15,6 +15,7 @@ namespace FTDMapgen_WinForms
         private Panel toolPanel;
         private Panel propertiesPanel;
         private Panel displayPanel;
+        //private Panel AreaPrefabPanel;
 
         // Кнопки инструментов
         private Button btnSelect;
@@ -61,6 +62,15 @@ namespace FTDMapgen_WinForms
         private Label lblMountEditorModeVal;
         private Button btnDelete;
 
+        // Панель AreaPrefab
+        private Label lblAreaPrefab;
+        private Label lblArePrefabInfo;
+        private Button btnFill;
+        private Button btnDeleteMountains;
+        private Button btnSavePrefab;
+        private Button btnLoadPrefabIntoSelection;
+        private Label lblAreaErrora;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -83,6 +93,7 @@ namespace FTDMapgen_WinForms
             CreateToolPanel();
             CreatePropertiesPanel();
             CreateDisplayPanel();
+            CreateAreaPrefabPanel();
 
             this.ResumeLayout(false);
         }
@@ -230,6 +241,7 @@ namespace FTDMapgen_WinForms
             string editorMS = "UNDEFINED LMAO";
             if (currentMode == EditorMode.Select) editorMS = "Editing Selection";
             if (currentMode == EditorMode.Brush) editorMS = "Terrain Brush";
+            if (currentMode == EditorMode.Area) editorMS = "Area Fill";
             return editorMS;
         }
 
@@ -596,6 +608,79 @@ namespace FTDMapgen_WinForms
                 //Invalidate();
             }
             Invalidate();
+        }
+
+        private void CreateAreaPrefabPanel()
+        {
+            /*displayPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
+            };*/
+
+            //private Label lblAreaPrefab;
+            //private Label lblArePrefabInfo;
+            //private Button btnFill;
+            //private Button btnSavePrefab;
+            //private Button btnLoadPrefabIntoSelection;
+            //private Label lblAreaErrora;
+
+            var AreaPrefabGroup = new GroupBox
+            {
+                Text = "Area Selection",
+                Location = new Point(10, 350),
+                Size = new Size(280, 200)
+            };
+
+            lblAreaPrefab = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(100, 20) };
+            //use template to output smth
+            //lblMountEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(150, 20) };
+            lblArePrefabInfo = new Label { Text = "Editor Mode", Location = new Point(10, 50), Size = new Size(100, 20) };
+            //new Point(10, 25), Size = new Size(100, 20) - standart. use +=25 in vertical
+            lblAreaErrora = new Label { Text = "Editor Mode", Location = new Point(10, 175), Size = new Size(100, 20) };
+
+            btnFill = new Button
+            {
+                Text = "Fill Area",
+                Location = new Point(10, 75),
+                Size = new Size(150, 25)
+            };
+
+            btnFill.Click += DeleteSelectedMountain;
+
+            btnDeleteMountains = new Button
+            {
+                Text = "Delete Mountainsb",
+                Location = new Point(10, 100),
+                Size = new Size(150, 25)
+            };
+
+            btnDeleteMountains.Click += DeleteSelectedMountain;
+
+            btnSavePrefab = new Button
+            {
+                Text = "Save Prefab",
+                Location = new Point(10, 125),
+                Size = new Size(150, 25)
+            };
+
+            btnSavePrefab.Click += DeleteSelectedMountain;
+
+            btnLoadPrefabIntoSelection = new Button
+            {
+                Text = "Load Prefab",
+                Location = new Point(10, 150),
+                Size = new Size(150, 25)
+            };
+
+            btnLoadPrefabIntoSelection.Click += DeleteSelectedMountain;
+
+            AreaPrefabGroup.Controls.AddRange(new Control[] { lblAreaPrefab, lblArePrefabInfo, btnFill, btnDeleteMountains, btnSavePrefab, btnLoadPrefabIntoSelection, lblAreaErrora });
+
+            propertiesPanel.Controls.Add(AreaPrefabGroup);
+
+            // Сохраняем ссылку для показа/скрытия
+            AreaPrefabGroupLink = AreaPrefabGroup;
         }
     }
 }
