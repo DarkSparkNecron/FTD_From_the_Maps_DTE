@@ -48,6 +48,9 @@ namespace FTDMapgen_WinForms
         private Label lblRawHeight2;
         private Label lblEditorMode;
         private Label lblEditorModeVal;
+        private CheckBox chBaseHeight;
+        private CheckBox chHeightScale;
+        private CheckBox chBiome;
 
         // Свойства горы
         private NumericUpDown numMountainX;
@@ -67,6 +70,8 @@ namespace FTDMapgen_WinForms
         private Label lblArePrefabInfo;
         private Button btnFill;
         private Button btnDeleteMountains;
+        private Button btnInsertPrefab;
+        private Button btnCapturePrefab;
         private Button btnSavePrefab;
         private Button btnLoadPrefabIntoSelection;
         private Label lblAreaErrora;
@@ -284,7 +289,7 @@ namespace FTDMapgen_WinForms
             };
 
             lblEditorMode = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(100, 20) }; 
-            lblEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(150, 20) }; //if var it will tell that this label is null
+            lblEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(125, 20) }; //if var it will tell that this label is null
 
             // Base Height
             var lblBaseHeight = new Label { Text = "Base Height:", Location = new Point(10, 50) };
@@ -375,18 +380,40 @@ namespace FTDMapgen_WinForms
             // Метровые значения
             lblBaseHeightMeters = new Label { Text = "0m", Location = new Point(150, 149), Size = new Size(80, 20) }; //(190, 25)
             lblHeightScaleMeters = new Label { Text = "0m", Location = new Point(150, 173), Size = new Size(80, 20) };//(190, 50)
-            lblRawHeight = new Label { Text = "0m", Location = new Point(150, 125), Size = new Size(150, 20) };//(100, 100)
+            lblRawHeight = new Label { Text = "0m", Location = new Point(150, 125), Size = new Size(80, 20) };//(100, 100)
 
             lblBaseHeightMeters2 = new Label { Text = "BaseHeight:", Location = new Point(10, 149), Size = new Size(80, 20) }; 
             lblHeightScaleMeters2 = new Label { Text = "HeightScale:", Location = new Point(10, 173), Size = new Size(80, 20) };
-            lblRawHeight2 = new Label { Text = "RawHeight:", Location = new Point(10, 125), Size = new Size(150, 20) };
+            lblRawHeight2 = new Label { Text = "RawHeight:", Location = new Point(10, 125), Size = new Size(80, 20) };
+
+            chBaseHeight = new CheckBox {
+                Location = new Point(150 + 80 + 5, 48),
+                Size = new Size(20, 20),
+                Text = "",
+                Checked = true
+            };
+            chHeightScale = new CheckBox
+            {
+                Location = new Point(150+80+5, 73),
+                Size = new Size(20, 20),
+                Text = "",
+                Checked = true
+            };
+            chBiome = new CheckBox
+            {
+                Location = new Point(150+80+5, 98),
+                Size = new Size(20, 20),
+                Text = "",
+                Checked = true
+            };
 
             terrainGroup.Controls.AddRange(new Control[] {lblEditorMode, lblEditorModeVal,
-        lblBaseHeight, numBaseHeight,
-        lblHeightScale, numHeightScale,
-        lblBiome, numBiome,
-        lblBaseHeightMeters, lblHeightScaleMeters, lblRawHeight, lblBaseHeightMeters2, lblHeightScaleMeters2, lblRawHeight2
-        });
+            lblBaseHeight, numBaseHeight,
+            lblHeightScale, numHeightScale,
+            lblBiome, numBiome,
+            lblBaseHeightMeters, lblHeightScaleMeters, lblRawHeight, lblBaseHeightMeters2, lblHeightScaleMeters2, lblRawHeight2,
+            chBaseHeight, chHeightScale, chBiome
+            });
 
             propertiesPanel.Controls.Add(terrainGroup);
 
@@ -405,7 +432,7 @@ namespace FTDMapgen_WinForms
             };
 
             lblMountEditorMode = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(100, 20) };
-            lblMountEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(150, 20) }; //if var it will tell that this label is null
+            lblMountEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(125, 20) }; //if var it will tell that this label is null
 
 
             // Позиция X
@@ -632,50 +659,70 @@ namespace FTDMapgen_WinForms
                 Size = new Size(280, 200)
             };
 
-            lblAreaPrefab = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(100, 20) };
+            lblAreaPrefab = new Label { Text = "Editor Mode", Location = new Point(10, 25), Size = new Size(260, 20) };
             //use template to output smth
             //lblMountEditorModeVal = new Label { Text = "nu uh", Location = new Point(150, 25), Size = new Size(150, 20) };
-            lblArePrefabInfo = new Label { Text = "Editor Mode", Location = new Point(10, 50), Size = new Size(100, 20) };
+            lblArePrefabInfo = new Label { Text = "Editor Mode", Location = new Point(10, 50), Size = new Size(260, 20) };
             //new Point(10, 25), Size = new Size(100, 20) - standart. use +=25 in vertical
-            lblAreaErrora = new Label { Text = "Editor Mode", Location = new Point(10, 175), Size = new Size(100, 20) };
+            lblAreaErrora = new Label { Text = "Editor Mode", Location = new Point(10, 150), Size = new Size(260, 20) };
 
             btnFill = new Button
             {
                 Text = "Fill Area",
                 Location = new Point(10, 75),
-                Size = new Size(150, 25)
+                Size = new Size(120, 25)
             };
 
-            btnFill.Click += DeleteSelectedMountain;
+            btnFill.Click += btnFill_Click;
 
             btnDeleteMountains = new Button
             {
-                Text = "Delete Mountainsb",
+                Text = "Delete Mountains",
                 Location = new Point(10, 100),
-                Size = new Size(150, 25)
+                Size = new Size(120, 25)
             };
 
-            btnDeleteMountains.Click += DeleteSelectedMountain;
+            btnDeleteMountains.Click += btnDeleteMountains_Click;
+
+            btnInsertPrefab = new Button
+            {
+                Text = "Insert Prefab",
+                Location = new Point(130, 75),
+                Size = new Size(120, 25),
+                Enabled=false
+            };
+
+            btnInsertPrefab.Click += btnInsertPrefab_Click;
+
+            btnCapturePrefab = new Button
+            {
+                Text = "Capture Prefab",
+                Location = new Point(130, 100),
+                Size = new Size(120, 25)
+            };
+
+            btnCapturePrefab.Click += btnCapturePrefab_Click;
 
             btnSavePrefab = new Button
             {
                 Text = "Save Prefab",
                 Location = new Point(10, 125),
-                Size = new Size(150, 25)
+                Size = new Size(120, 25),
+                Enabled = false
             };
 
-            btnSavePrefab.Click += DeleteSelectedMountain;
+            btnSavePrefab.Click += btnSavePrefab_Click;
 
             btnLoadPrefabIntoSelection = new Button
             {
                 Text = "Load Prefab",
-                Location = new Point(10, 150),
-                Size = new Size(150, 25)
+                Location = new Point(130, 125),
+                Size = new Size(120, 25)
             };
 
-            btnLoadPrefabIntoSelection.Click += DeleteSelectedMountain;
+            btnLoadPrefabIntoSelection.Click += btnLoadPrefabIntoSelection_Click;
 
-            AreaPrefabGroup.Controls.AddRange(new Control[] { lblAreaPrefab, lblArePrefabInfo, btnFill, btnDeleteMountains, btnSavePrefab, btnLoadPrefabIntoSelection, lblAreaErrora });
+            AreaPrefabGroup.Controls.AddRange(new Control[] { lblAreaPrefab, lblArePrefabInfo, btnFill, btnDeleteMountains, btnInsertPrefab, btnCapturePrefab, btnSavePrefab, btnLoadPrefabIntoSelection, lblAreaErrora });
 
             propertiesPanel.Controls.Add(AreaPrefabGroup);
 

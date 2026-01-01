@@ -15,6 +15,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Media;
 using Microsoft.VisualBasic.Devices;
+using System.Reflection;
 
 namespace FTDMapgen_WinForms
     {
@@ -73,6 +74,7 @@ namespace FTDMapgen_WinForms
             private Keyboard keyboard = new Keyboard();
             PointF firstSelectionPoint;
             PointF secondSelectionPoint;
+            AreaPrefab loadedPrefab;
 
 
         // Цвета биомов
@@ -647,35 +649,8 @@ namespace FTDMapgen_WinForms
                     var SelectionPen = new Pen(Color.FromArgb(95, Color.White), 50);
                     if(currentMode==EditorMode.Area)
                     {
-                        float width = (secondSelectionPoint.X - firstSelectionPoint.X);
-                        float height = (secondSelectionPoint.Y - firstSelectionPoint.Y);
-                        PointF iEatYourRAM = firstSelectionPoint;
-                        //iEatYourRAM.X = CoordPair[0];
-                        //iEatYourRAM.Y = CoordPair[1];
-                        PointF upperLeft=new PointF();
-                        PointF downRight = new PointF();
-
-                        if(iEatYourRAM.Y< secondSelectionPoint.Y)
-                        {
-                            downRight.Y = secondSelectionPoint.Y-iEatYourRAM.Y + getCellSize();
-                            upperLeft.Y = iEatYourRAM.Y;
-                        }else
-                        {
-                            downRight.Y = iEatYourRAM.Y - secondSelectionPoint.Y + getCellSize();
-                            upperLeft.Y = secondSelectionPoint.Y;
-                        }
-
-                        if(iEatYourRAM.X< secondSelectionPoint.X)
-                        {
-                            upperLeft.X = iEatYourRAM.X;
-                            downRight.X = secondSelectionPoint.X- iEatYourRAM.X + getCellSize();
-                        }else
-                        {
-                            upperLeft.X = secondSelectionPoint.X;
-                            downRight.X = iEatYourRAM.X - secondSelectionPoint.X + getCellSize();
-                        }
-
-                        g.DrawRectangle(SelectionPen, upperLeft.X - 5, upperLeft.Y - 5, downRight.X + 5, downRight.Y + 5);
+                        PointF[] AreaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
+                        g.DrawRectangle(SelectionPen, AreaData[0].X - 5, AreaData[0].Y - 5, AreaData[1].X + 5, AreaData[1].Y + 5);
                         //this.Text = iEatYourRAM + " ," + secondSelectionPoint+ " w"+width+" h"+height+" ;"+upperLeft+" ,"+downRight;
                     }
                     else
@@ -684,7 +659,37 @@ namespace FTDMapgen_WinForms
 
                 }
             }
+        public PointF[] getAreaData(PointF point1, PointF point2)
+        {
+            PointF[] ans = new PointF[2];
+            PointF upperLeft = new PointF(); //UpperLeft
+            PointF downRight = new PointF(); //Habarites
 
+            if (point1.Y < point2.Y)
+            {
+                downRight.Y = point2.Y - point1.Y + getCellSize();
+                upperLeft.Y = point1.Y;
+            }
+            else
+            {
+                downRight.Y = point1.Y - point2.Y + getCellSize();
+                upperLeft.Y = point2.Y;
+            }
+
+            if (point1.X < point2.X)
+            {
+                upperLeft.X = point1.X;
+                downRight.X = point2.X - point1.X + getCellSize();
+            }
+            else
+            {
+                upperLeft.X = point2.X;
+                downRight.X = point1.X - point2.X + getCellSize();
+            }
+            ans[0] = upperLeft;
+            ans[1] = downRight;
+            return ans;
+        }
         public float[] getCoordsByTerrain(Terrain t)
         {
             float[] ans =  new float[2];
@@ -855,6 +860,7 @@ namespace FTDMapgen_WinForms
                                     //currentMode = EditorMode.Select;
                                     
                                     UpdateTerrainProperties();
+                                    UpdatePrefabStatus();
                                     UpdateToolButtons();
                                     return;
                                 }
@@ -869,6 +875,8 @@ namespace FTDMapgen_WinForms
                                     float[] temp3 = getCoordsByTerrain(selectedTerrain);
                                     firstSelectionPoint.X = temp3[0];
                                     firstSelectionPoint.Y = temp3[1];
+                                    if (currentMode == EditorMode.Area) selectedTerrain = null;
+                                    UpdatePrefabStatus();
                                     return;
                                 }
                                 return;
@@ -1082,9 +1090,12 @@ namespace FTDMapgen_WinForms
                     SaveUndoState("Apply Brush");
 
                     // Применяем характеристики выбранного террейна к целевому
-                    targetTerrain.BaseHeight = storeTerrain.BaseHeight;
-                    targetTerrain.HeightScale = storeTerrain.HeightScale;
-                    targetTerrain.Biome = storeTerrain.Biome;
+                    if(chBaseHeight.Checked==true)
+                        targetTerrain.BaseHeight = storeTerrain.BaseHeight;
+                    if (chHeightScale.Checked == true)
+                        targetTerrain.HeightScale = storeTerrain.HeightScale;
+                    if (chBiome.Checked == true)
+                        targetTerrain.Biome = storeTerrain.Biome;
 
                     Invalidate();
                 }
@@ -1205,6 +1216,46 @@ namespace FTDMapgen_WinForms
                 btnUndo.Enabled = undoStack.Count > 0;
                 btnRedo.Enabled = redoStack.Count > 0;
             }
+
+            private void UpdatePrefabStatus()
+            {
+                //PointF[] getAreaData(PointF point1, PointF point2)
+                float areSizeHorizont = 0;
+                float areSizeVertical = 0;
+                if(currentMode==EditorMode.Area)
+                {
+                    PointF[] AreaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
+                    areSizeHorizont = AreaData[1].X / getCellSize();
+                    areSizeVertical = AreaData[1].Y / getCellSize();
+                }
+                lblArePrefabInfo.Text = "S.Area size X:" + areSizeHorizont + " Y:" + areSizeVertical;
+                if (loadedPrefab!=null)
+                {
+                    lblAreaPrefab.Text = "Prefab loaded";
+                    lblArePrefabInfo.Text += " | Prefab size X:" + loadedPrefab.Size.X + " Y:" + loadedPrefab.Size.Y;
+                    if(areSizeHorizont!= loadedPrefab.Size.X || areSizeVertical!= loadedPrefab.Size.Y)
+                    {
+                        //make insert prefab button not enabled
+                        btnInsertPrefab.Enabled = false;
+                        lblAreaErrora.Text = "Warning: you cannot place prefab, it doen't fit area";
+                    }else
+                    {
+                        //make insert prefab button enabled
+                        btnInsertPrefab.Enabled = true;
+                        lblAreaErrora.Text = " ,";
+                    }
+                    btnSavePrefab.Enabled = true;
+                }
+                else
+                {
+                    lblAreaPrefab.Text = "Prefab not loaded";
+                    //make insert prefab button not enabled
+                    btnInsertPrefab.Enabled = false;
+                    btnSavePrefab.Enabled = false;
+                    lblAreaErrora.Text = " ,";
+                }
+                Invalidate();
+            } 
 
 
             // Обработчики кнопок
@@ -1345,7 +1396,7 @@ namespace FTDMapgen_WinForms
                 selectedMountain = null;
                 updateNUDBoundaries();
                 if (currentMode==EditorMode.Brush) // || currentMode==EditorMode.Area
-            {
+                {
                     if (selectedTerrain == null)
                         selectedTerrain = new Terrain()
                         {
@@ -1463,12 +1514,123 @@ namespace FTDMapgen_WinForms
                 return ans;
             }
 
-        public void wipeUnnecData()
+            public void wipeUnnecData()
             {
                 selectedTerrain = null;
                 selectedMountain = null;
             }
-    }
+
+            private async void btnLoadPrefabIntoSelection_Click(object sender, EventArgs e)
+            {
+                //it is not actually load prefab into selection. It loads it into memory
+                using (var dialog = new OpenFileDialog())
+                {
+                    dialog.Filter = "AreaPrefab files (*.AreaPrefab)|*.AreaPrefab|JSON files (*.json)|*.json|All files (*.*)|*.*";
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        try
+                        {
+                            string json = await File.ReadAllTextAsync(dialog.FileName);
+                            wipeUnnecData();
+                            loadedPrefab = JsonSerializer.Deserialize<AreaPrefab>(json);
+                            UpdatePrefabStatus();
+                            //Invalidate(); //Update already have that
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Error loading file: {ex.Message}", "Error",
+                                          MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+
+            private async void btnSavePrefab_Click(object sender, EventArgs e)
+            {
+                using (var dialog = new SaveFileDialog())
+                {
+                    dialog.Filter = "AreaPrefab files (*.AreaPrefab)|*.AreaPrefab|JSON files (*.json)|*.json";
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        try
+                        {
+                            //SaveMountainsToWorldData();
+                            //worldData.DisplaySettings.copyDataFrom(displaySettings);
+                            //worldData.RedactorInfo.refresh();
+                            if (loadedPrefab.RedactorInfo == null) loadedPrefab.RedactorInfo = new NonStaticProgramInfo();
+                            loadedPrefab.RedactorInfo.refresh();
+                            var options = new JsonSerializerOptions { WriteIndented = true };
+                            string json = JsonSerializer.Serialize(loadedPrefab, options);
+                            await File.WriteAllTextAsync(dialog.FileName, json);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Error saving file: {ex.Message}", "Error",
+                                          MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+
+            private void btnCapturePrefab_Click(object sender, EventArgs e)
+            {
+                loadedPrefab = new AreaPrefab();
+                PointF[] areaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
+                loadedPrefab.Size = new Point((int)areaData[1].X / 256, (int)areaData[1].Y / 256);
+                loadedPrefab.Terrains=loadedPrefab.getTerrainsWithingSelection(areaData[0], areaData[1], this); //yay i like how i written all area-featuring methods in AreaPrefab class at first
+                loadedPrefab.loadMountainsFromSelection(areaData[0], areaData[1], this);
+                UpdatePrefabStatus();
+            }
+
+            private void btnInsertPrefab_Click(object sender, EventArgs e)
+            {
+                PointF[] areaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
+                loadedPrefab.insertIntoSelection(loadedPrefab,areaData[0], areaData[1], this); //i like it here especially
+                UpdatePrefabStatus();
+            }
+
+
+            public void fillSelection(PointF upperLeft, PointF habariteData)
+            {
+                for (int i = (int)upperLeft.Y; i < (int)(upperLeft.Y + habariteData.Y); i += 256)
+                {
+                    for (int j = (int)upperLeft.X+256; j <= (int)(upperLeft.X + habariteData.X); j += 256) //WHY??????
+                    {
+                        ApplyBrush(new PointF(j, i));
+                    }
+                }
+                //make a handler for redo.undo of filling (a batch of brush actions)
+            }
+
+            public void deleteMountainsInArea(PointF upperLeft, PointF habariteData)
+            {
+                List<Mountain> temp = new List<Mountain>();
+                temp.AddRange(worldData.mountains);
+                foreach (Mountain m in worldData.mountains)
+                {
+                    bool x = m.Position.X >= upperLeft.X && m.Position.X <= (upperLeft.X + habariteData.X);
+                    bool y = m.Position.Y >= upperLeft.Y && m.Position.Y <= (upperLeft.Y + habariteData.Y);
+                    if (x && y) temp.Remove(m);
+                }
+                worldData.mountains = temp;
+                Invalidate();
+            }
+
+            private void btnDeleteMountains_Click(object sender, EventArgs e)
+            {
+                PointF[] areaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
+                deleteMountainsInArea(areaData[0], areaData[1]);
+            }
+
+            private void btnFill_Click(object sender, EventArgs e)
+            {
+                PointF[] areaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
+                fillSelection(areaData[0], areaData[1]);
+            }
+
+
+
+        }   
 
         // Вспомогательные классы
         public enum EditorMode { Select, Brush, Mountain, Area }
@@ -1508,7 +1670,7 @@ namespace FTDMapgen_WinForms
                 if (this.UseTrueSize_LieToFace == null) this.UseTrueSize_LieToFace = false;
                 if (this.UseTrueSize_SmartifyLenghts == null) this.UseTrueSize_SmartifyLenghts = true;
             }
-    }
+        }
 
         public class TerrainBrush
         {

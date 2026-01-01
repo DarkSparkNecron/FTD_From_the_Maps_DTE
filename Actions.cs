@@ -12,6 +12,20 @@ namespace FTDMapgen_WinForms
 
         public abstract void Redo();
         public abstract void Undo();
+
+        /*
+         TODO
+           EditSelectedTerrain (on selection save an example of selected terrain. When new selection is done, if terrain has different params -> add Action)
+           EditSelectedMountain (same as terrain, but for mountains)
+           AddMountain
+           Delete Mountain
+           Delete Mountains in area
+           Brush
+           Fill
+           Insert Prefab
+         
+         
+         */
     }
 
     public class ActionChangeTerrainProperty : Action

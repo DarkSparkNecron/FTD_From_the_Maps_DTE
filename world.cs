@@ -97,9 +97,10 @@ namespace FTDMapgen_WinForms
             int newSize = worldDataAdditional.BoardLayout.TerrainsPerBoard;
 
 
-            if (!settings.BoardReshape) this.reshapeMap(worldDataAdditional.BoardLayout.BoardSections[0].Count, worldDataAdditional.BoardLayout.BoardSections.Count, worldDataAdditional.BoardLayout.TerrainsPerBoard);
-
-            if (BoardLayout != null && false)
+            if (settings.BoardReshape) this.reshapeMap(worldDataAdditional.BoardLayout.BoardSections[0].Count, worldDataAdditional.BoardLayout.BoardSections.Count, worldDataAdditional.BoardLayout.TerrainsPerBoard);
+            
+            //update terrains
+            if (BoardLayout != null)
             {
                 int boardsY = BoardLayout.BoardSections.Count; //old sizes
                 int boardsX = boardsY > 0 ? BoardLayout.BoardSections[0].Count : 0;
@@ -393,14 +394,17 @@ namespace FTDMapgen_WinForms
             //mountain position is stored in 256 terrain size, but lied in GUI
             int maxX = newBoardX * newTerrainsPerBoard * 256;
             int maxY = newBoardY * newTerrainsPerBoard * 256;
+            List<Mountain> tempM = new List<Mountain>();
+            tempM.AddRange(this.mountains);
             foreach (Mountain m in this.mountains)
             {
                 if(m.Position.X>maxX || m.Position.Y>maxY)
                 {
-                    this.mountains.Remove(m);
+                    tempM.Remove(m);
                     //it is not giving me an ability to set m to null. I care for your memory!
                 }
             }
+            this.mountains = tempM;
 
         }
     }
