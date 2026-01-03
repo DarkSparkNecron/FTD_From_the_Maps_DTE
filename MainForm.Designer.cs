@@ -35,6 +35,7 @@ namespace FTDMapgen_WinForms
         private ComboBox cmbHeightMode;
         private ComboBox cmbDisplayMode;
         private NumericUpDown numWaterLevel;
+        private CheckBox chShowAdvTerrProp;
 
         // Свойства террейна
         private NumericUpDown numBaseHeight;
@@ -76,6 +77,15 @@ namespace FTDMapgen_WinForms
         private Button btnLoadPrefabIntoSelection;
         private Label lblAreaErrora;
 
+        // Adv Terrain properties
+        private NumericUpDown numSeed;
+        private NumericUpDown numPerlinFreq;
+        private NumericUpDown numPerlinOct;
+        private CheckBox chSeed;
+        private CheckBox chPerlinFreq;
+        private CheckBox chPerlinoct;
+        private Button btnRandomSeed;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -99,6 +109,7 @@ namespace FTDMapgen_WinForms
             CreatePropertiesPanel();
             CreateDisplayPanel();
             CreateAreaPrefabPanel();
+            CreateAdvancedBrushPanel();
 
             this.ResumeLayout(false);
         }
@@ -226,8 +237,16 @@ namespace FTDMapgen_WinForms
                 Increment = 0.1m
             };
 
+            chShowAdvTerrProp = new CheckBox
+            {
+                Location = new Point(55 + 10 +50  + 5, 73),  // Сдвинули правее
+                Size = new Size(150, 20),
+                Checked = false,
+                Text = "Show Adv.Terr. Options"
+            };
+
             displayGroup.Controls.AddRange(new Control[] {
-        chkApplyHills, cmbHeightMode, cmbDisplayMode, lblWaterLevel, numWaterLevel
+                chkApplyHills, cmbHeightMode, cmbDisplayMode, lblWaterLevel, numWaterLevel,chShowAdvTerrProp
             });
 
             propertiesPanel.Controls.Add(displayGroup);
@@ -728,6 +747,140 @@ namespace FTDMapgen_WinForms
 
             // Сохраняем ссылку для показа/скрытия
             AreaPrefabGroupLink = AreaPrefabGroup;
+        }
+
+        public void CreateAdvancedBrushPanel()
+        {
+            var terrainGroupAdvanced = new GroupBox
+            {
+                Text = "Adv Terrain Properties",
+                Location = new Point(10, 350+250+50),
+                Size = new Size(280, 200),
+                Visible = false
+            };
+
+            
+            var lblSeed = new Label { Text = "Seed:", Location = new Point(10, 50) };
+            numSeed = new NumericUpDown
+            {
+                Location = new Point(150, 48), //(100,23)
+                Size = new Size(80, 20),
+                Minimum = 100,
+                Maximum = 9999,
+                Increment = 1
+            };
+            numSeed.ValueChanged += (s, e) =>
+            {
+                if (selectedTerrain != null)
+                {
+                    selectedTerrain.Seed = (int)numSeed.Value;
+                    //UpdateMeterValues();
+                    //Invalidate();
+                }
+
+                if (storeTerrain != null)
+                {
+                    storeTerrain.Seed = (int)numSeed.Value;
+                    //UpdateMeterValues();
+                    //Invalidate();
+                }
+                //UpdateMeterValues();
+                Invalidate();
+            };
+
+            
+            var lblPerlinFreq = new Label { Text = "Perlin Freq:", Location = new Point(10, 75) };
+            numPerlinFreq = new NumericUpDown
+            {
+                Location = new Point(150, 73), //(100, 48)
+                Size = new Size(80, 20),
+                Minimum = 0,
+                Maximum = 10,
+                Increment = 1
+            };
+            numPerlinFreq.ValueChanged += (s, e) =>
+            {
+                if (selectedTerrain != null)
+                {
+                    selectedTerrain.PerlinFrequency = (int)numPerlinFreq.Value;
+                    //UpdateMeterValues();
+                    //Invalidate();
+                }
+
+                if (storeTerrain != null)
+                {
+                    storeTerrain.PerlinFrequency = (int)numPerlinFreq.Value;
+                    //UpdateMeterValues();
+                    //Invalidate();
+                }
+                //UpdateMeterValues();
+                Invalidate();
+            };
+
+            
+            var lblPerlinOct = new Label { Text = "PerlinOct:", Location = new Point(10, 100) };
+            numPerlinOct = new NumericUpDown
+            {
+                Location = new Point(150, 98), //(100, 73)
+                Size = new Size(80, 20),
+                Minimum = 0,
+                Maximum = 10,
+                Increment = 1
+            };
+            numPerlinOct.ValueChanged += (s, e) =>
+            {
+                if (selectedTerrain != null)
+                {
+                    selectedTerrain.PerlinOctaves = (int)numPerlinOct.Value;
+                    //Invalidate();
+                }
+
+                if (storeTerrain != null)
+                {
+                    storeTerrain.PerlinOctaves = (int)numPerlinOct.Value;
+                    //Invalidate();
+                }
+                Invalidate();
+            };
+
+            chSeed = new CheckBox
+            {
+                Location = new Point(150 + 80 + 5, 48),
+                Size = new Size(20, 20),
+                Text = "",
+                Checked = true
+            };
+            chPerlinFreq = new CheckBox
+            {
+                Location = new Point(150 + 80 + 5, 73),
+                Size = new Size(20, 20),
+                Text = "",
+                Checked = true
+            };
+            chPerlinoct = new CheckBox
+            {
+                Location = new Point(150 + 80 + 5, 98),
+                Size = new Size(20, 20),
+                Text = "",
+                Checked = true
+            };
+
+            btnRandomSeed = new Button
+            {
+                Text = "RND",
+                Location = new Point(150 - 5 - 20, 48),
+                Size = new Size(25, 25),
+            };
+            btnRandomSeed.Click += btnRNDSeed_Click;
+
+            terrainGroupAdvanced.Controls.AddRange(new Control[] {lblSeed,lblPerlinFreq,lblPerlinOct,numSeed,numPerlinFreq,numPerlinOct,chSeed,chPerlinFreq,chPerlinoct,
+                btnRandomSeed
+            });
+
+            propertiesPanel.Controls.Add(terrainGroupAdvanced);
+
+            // Сохраняем ссылку для показа/скрытия
+            terrainAdvPropertiesGroup = terrainGroupAdvanced;
         }
     }
 }

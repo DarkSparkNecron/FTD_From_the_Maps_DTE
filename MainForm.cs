@@ -64,6 +64,7 @@ namespace FTDMapgen_WinForms
             private GroupBox terrainPropertiesGroup;
             private GroupBox mountainPropertiesGroup;
             private GroupBox AreaPrefabGroupLink;
+            private GroupBox terrainAdvPropertiesGroup;
 
             SoundPlayer soundSmartGameDev = new SoundPlayer("assets/SmartGameDev.wav");
             SoundPlayer soundAmogus = new SoundPlayer("assets/among-us-roundstart.wav");
@@ -89,12 +90,16 @@ namespace FTDMapgen_WinForms
 
             public MainForm()
             {
+                storeTerrain.Seed = 1234; //ok moving it here fixes it
                 InitializeComponent();
                 InitializeWorldData(); // Новая функция инициализации
                 InitializeTerrainBitmap();
                 SetupEventHandlers();
                 FitToView(); // Автоматическое подгонка под вид
                 soundSmartGameDev.PlayLooping();
+                //storeTerrain.newSeed(); //yay rnd
+                //storeTerrain.Seed = 100;// 1234; //that shit overwrites seed of the first clicked tile in session on EMPTY MAP, so 100 ut should be??
+                //i like my buggy smartcode
                 UpdateToolButtons();
             }
 
@@ -122,11 +127,12 @@ namespace FTDMapgen_WinForms
                 btnRage.Click += BtnSRAT_Click;
                 //Mountain Delete is in designer
 
-            // Обработчики изменения настроек
+                // Обработчики изменения настроек
                 cmbHeightMode.SelectedIndexChanged += SettingsChanged;
                 cmbDisplayMode.SelectedIndexChanged += SettingsChanged;
                 chkApplyHills.CheckedChanged += SettingsChanged;
                 numWaterLevel.ValueChanged += SettingsChanged;
+                chShowAdvTerrProp.CheckedChanged += SettingsChanged;
 
                 // Обработчики инструментов
                 btnSelect.Click += (s, e) => currentMode = EditorMode.Select;
@@ -214,7 +220,7 @@ namespace FTDMapgen_WinForms
                                         BaseHeight = 0f,
                                         HeightScale = 0f,
                                         Biome = 3,
-                                        Seed = 1,
+                                        Seed = 100,
                                         PerlinFrequency = 4,
                                         PerlinOctaves = 5
                                     });
@@ -1002,7 +1008,8 @@ namespace FTDMapgen_WinForms
                 // Показываем панель свойств горы
                 if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = false;
                 if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = true;
-                
+                if (terrainAdvPropertiesGroup != null && terrainPropertiesGroup != null && chShowAdvTerrProp.Checked) terrainAdvPropertiesGroup.Visible = terrainPropertiesGroup.Visible;
+
                 Invalidate();
                 return;
             }
@@ -1022,6 +1029,7 @@ namespace FTDMapgen_WinForms
                 // Показываем панель свойств террейна
                 if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = true;
                 if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
+                if (terrainAdvPropertiesGroup != null&& terrainPropertiesGroup != null && chShowAdvTerrProp.Checked) terrainAdvPropertiesGroup.Visible = terrainPropertiesGroup.Visible;
 
                 Invalidate();
                 return;
@@ -1031,7 +1039,11 @@ namespace FTDMapgen_WinForms
                 // Ничего не выбрано - скрываем панели
                 if (terrainPropertiesGroup != null) terrainPropertiesGroup.Visible = false;
                 //if (mountainPropertiesGroup != null) mountainPropertiesGroup.Visible = false;
+                if (terrainAdvPropertiesGroup != null && terrainPropertiesGroup != null && chShowAdvTerrProp.Checked) terrainAdvPropertiesGroup.Visible = terrainPropertiesGroup.Visible;
             }
+
+
+            
         }
 
         public Terrain FindTerrainAtPosition(PointF worldPos)
@@ -1096,6 +1108,12 @@ namespace FTDMapgen_WinForms
                         targetTerrain.HeightScale = storeTerrain.HeightScale;
                     if (chBiome.Checked == true)
                         targetTerrain.Biome = storeTerrain.Biome;
+                    if (chPerlinFreq.Checked == true && chShowAdvTerrProp.Checked)
+                        targetTerrain.PerlinFrequency = storeTerrain.PerlinFrequency;
+                    if (chPerlinoct.Checked == true && chShowAdvTerrProp.Checked)
+                        targetTerrain.PerlinOctaves = storeTerrain.PerlinOctaves;
+                    if (chSeed.Checked == true && chShowAdvTerrProp.Checked)
+                        targetTerrain.Seed = storeTerrain.Seed;
 
                     Invalidate();
                 }
@@ -1143,6 +1161,13 @@ namespace FTDMapgen_WinForms
                     numHeightScale.Value = (decimal)selectedTerrain.HeightScale;
                     numBiome.Value = selectedTerrain.Biome;
 
+                    if (terrainAdvPropertiesGroup != null && chShowAdvTerrProp.Checked)
+                    {
+                        numSeed.Value = selectedTerrain.Seed;
+                        numPerlinFreq.Value = selectedTerrain.PerlinFrequency;
+                        numPerlinOct.Value = selectedTerrain.PerlinOctaves;
+                    }
+
                     // Обновляем метры
                     UpdateMeterValues();
                 }
@@ -1153,6 +1178,13 @@ namespace FTDMapgen_WinForms
                     numBaseHeight.Value = (decimal)storeTerrain.BaseHeight;
                     numHeightScale.Value = (decimal)storeTerrain.HeightScale;
                     numBiome.Value = storeTerrain.Biome;
+
+                    if (terrainAdvPropertiesGroup != null && chShowAdvTerrProp.Checked)
+                    {
+                        numSeed.Value = storeTerrain.Seed;
+                        numPerlinFreq.Value = storeTerrain.PerlinFrequency;
+                        numPerlinOct.Value = storeTerrain.PerlinOctaves;
+                    }
 
                     // Обновляем метры
                     UpdateMeterValues();
@@ -1375,6 +1407,19 @@ namespace FTDMapgen_WinForms
                 displaySettings.ApplyHills = chkApplyHills.Checked;
                 displaySettings.HeightMode = (HeightMode)cmbHeightMode.SelectedIndex;
                 displaySettings.DisplayMode = (DisplayMode)cmbDisplayMode.SelectedIndex;
+                displaySettings.AdvTerrainPropertiesShow = chShowAdvTerrProp.Checked;
+
+                if (terrainAdvPropertiesGroup != null && terrainPropertiesGroup != null)
+                {
+                    if (chShowAdvTerrProp.Checked)
+                    {
+                        UpdateTerrainProperties();
+                        terrainAdvPropertiesGroup.Visible = terrainPropertiesGroup.Visible;
+                    }else
+                    {
+                        terrainAdvPropertiesGroup.Visible = false;
+                    }
+                }
                 Invalidate();
             }
 
@@ -1398,6 +1443,7 @@ namespace FTDMapgen_WinForms
                 if (currentMode==EditorMode.Brush) // || currentMode==EditorMode.Area
                 {
                     if (selectedTerrain == null)
+                    {
                         selectedTerrain = new Terrain()
                         {
                             BaseHeight = 0f,
@@ -1407,6 +1453,8 @@ namespace FTDMapgen_WinForms
                             PerlinFrequency = 4,
                             PerlinOctaves = 5
                         };
+                        selectedTerrain.newSeed();//the new generator arrived
+                    }
                     storeTerrain = new Terrain();
                     storeTerrain.copyDataFrom(selectedTerrain);
                     selectedTerrain = null;
@@ -1436,10 +1484,13 @@ namespace FTDMapgen_WinForms
                 bool showArea = currentMode==EditorMode.Area;
                 bool showMount = currentMode == EditorMode.Mountain || (currentMode == EditorMode.Select && selectedMountain != null);
                 bool showTerr = currentMode == EditorMode.Brush || (currentMode == EditorMode.Select && selectedTerrain != null) || (showArea && !showMount);
-                
+
                 // Обновляем видимость панелей свойств
                 if (terrainPropertiesGroup != null && showTerr)
+                {
                     terrainPropertiesGroup.Visible = true;
+                    if(terrainAdvPropertiesGroup!=null&& chShowAdvTerrProp.Checked) terrainAdvPropertiesGroup.Visible = terrainPropertiesGroup.Visible;
+                }
                 if (mountainPropertiesGroup != null && showMount)
                     mountainPropertiesGroup.Visible = true;
                 if (AreaPrefabGroupLink!=null)
@@ -1447,6 +1498,8 @@ namespace FTDMapgen_WinForms
                     AreaPrefabGroupLink.Visible = true;
                 else
                     AreaPrefabGroupLink.Visible = false;
+
+                
 
 
 
@@ -1627,7 +1680,21 @@ namespace FTDMapgen_WinForms
                 PointF[] areaData = getAreaData(firstSelectionPoint, secondSelectionPoint);
                 fillSelection(areaData[0], areaData[1]);
             }
-
+            
+            private void btnRNDSeed_Click(object sender, EventArgs e)
+            {
+                if(EditorMode.Select==currentMode && chSeed.Checked) //so no sudden overwrite
+                {
+                    selectedTerrain.newSeed();
+                    numSeed.Value = selectedTerrain.Seed;
+                }
+                if(currentMode==EditorMode.Brush||currentMode==EditorMode.Area)
+                {
+                    storeTerrain.newSeed();
+                    numSeed.Value = storeTerrain.Seed;
+                }
+                Invalidate();
+            }
 
 
         }   
@@ -1651,6 +1718,8 @@ namespace FTDMapgen_WinForms
             public bool? UseTrueSize_SmartifyLenghts { get; set; } = false; //turn true to have 1:1 coords and scales while UseTrueSize is false
             [JsonPropertyName("LieToFace")]
             public bool? UseTrueSize_LieToFace { get; set; } = true;
+            [JsonPropertyName("AdvTerrainPropertiesShow")]
+            public bool? AdvTerrainPropertiesShow { get; set; } = false;
 
             public void copyDataFrom(DisplaySettings t)
             {
@@ -1660,6 +1729,7 @@ namespace FTDMapgen_WinForms
                 this.UseTrueSize = t.UseTrueSize;
                 this.UseTrueSize_LieToFace = t.UseTrueSize_LieToFace;
                 this.UseTrueSize_SmartifyLenghts = t.UseTrueSize_SmartifyLenghts;
+                this.AdvTerrainPropertiesShow = t.AdvTerrainPropertiesShow;
             }
             public void init()
             {
@@ -1669,6 +1739,7 @@ namespace FTDMapgen_WinForms
                 if (this.UseTrueSize == null) this.UseTrueSize = false;
                 if (this.UseTrueSize_LieToFace == null) this.UseTrueSize_LieToFace = false;
                 if (this.UseTrueSize_SmartifyLenghts == null) this.UseTrueSize_SmartifyLenghts = true;
+                if (this.AdvTerrainPropertiesShow == null) this.AdvTerrainPropertiesShow = false;
             }
         }
 
